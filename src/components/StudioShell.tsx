@@ -4,13 +4,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sparkles, Wand2, Download, RefreshCw, Settings2, Upload, Play, type LucideIcon } from "lucide-react";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sparkles, Wand2, Download, RefreshCw, Settings2, Upload, Play, SlidersHorizontal, History, type LucideIcon } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface StudioShellProps {
   title: string;
   subtitle: string;
-  accent: string; // gradient classes
+  accent: string;
   icon: LucideIcon;
   promptPlaceholder: string;
   models: string[];
@@ -18,107 +19,157 @@ interface StudioShellProps {
   results: { gradient: string; meta: string }[];
 }
 
-export const StudioShell = ({ title, subtitle, accent, icon: Icon, promptPlaceholder, models, presets, results }: StudioShellProps) => {
+const Controls = ({ title, subtitle, accent, icon: Icon, promptPlaceholder, models, presets, rendering, setRendering, prompt, setPrompt }: any) => (
+  <div className="p-5 sm:p-6 space-y-6">
+    <div className="flex items-center gap-3">
+      <div className={`h-9 w-9 rounded-lg bg-gradient-to-br ${accent} flex items-center justify-center`}>
+        <Icon className="h-5 w-5 text-white" />
+      </div>
+      <div>
+        <h1 className="font-display text-2xl leading-none">{title}</h1>
+        <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
+      </div>
+    </div>
+
+    <div>
+      <label className="text-xs uppercase tracking-widest text-muted-foreground">Prompt</label>
+      <Textarea
+        value={prompt}
+        onChange={(e: any) => setPrompt(e.target.value)}
+        placeholder={promptPlaceholder}
+        className="mt-2 min-h-32 bg-muted/30 border-border/60 resize-none"
+      />
+      <div className="flex gap-2 mt-2">
+        <Button variant="outline" size="sm" className="flex-1 glass border-border/60">
+          <Wand2 className="h-3.5 w-3.5 mr-1.5" /> Enhance
+        </Button>
+        <Button variant="outline" size="sm" className="glass border-border/60">
+          <Upload className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+    </div>
+
+    <div>
+      <label className="text-xs uppercase tracking-widest text-muted-foreground">Model</label>
+      <Select defaultValue={models[0]}>
+        <SelectTrigger className="mt-2 bg-muted/30 border-border/60"><SelectValue /></SelectTrigger>
+        <SelectContent>{models.map((m: string) => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+      </Select>
+    </div>
+
+    <div>
+      <label className="text-xs uppercase tracking-widest text-muted-foreground">Style preset</label>
+      <div className="grid grid-cols-2 gap-2 mt-2">
+        {presets.map((p: string, i: number) => (
+          <button key={p} className={`text-xs px-3 py-2 rounded-lg border transition ${i === 0 ? "border-primary/50 bg-primary/10 text-foreground" : "border-border/60 text-muted-foreground hover:border-border"}`}>
+            {p}
+          </button>
+        ))}
+      </div>
+    </div>
+
+    <div>
+      <div className="flex justify-between mb-2">
+        <label className="text-xs uppercase tracking-widest text-muted-foreground">Creativity</label>
+        <span className="text-xs font-mono">0.7</span>
+      </div>
+      <Slider defaultValue={[70]} max={100} />
+    </div>
+
+    <Button
+      onClick={() => { setRendering(true); setTimeout(() => setRendering(false), 2200); }}
+      disabled={rendering}
+      className={`w-full bg-gradient-to-r ${accent} text-white border-0 shadow-glow h-11`}
+    >
+      {rendering ? (<><RefreshCw className="h-4 w-4 mr-2 animate-spin" /> Rendering…</>) : (<><Sparkles className="h-4 w-4 mr-2" /> Generate · 12 credits</>)}
+    </Button>
+  </div>
+);
+
+const History_ = () => (
+  <div className="p-5 sm:p-6">
+    <p className="text-xs uppercase tracking-widest text-muted-foreground mb-4">Render history</p>
+    <div className="space-y-3">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="flex gap-3 group cursor-pointer">
+          <div
+            className="h-14 w-20 rounded-lg flex-shrink-0"
+            style={{ background: `linear-gradient(${130 + i * 30}deg, hsl(${260 + i * 25} 80% 55%), hsl(${190 + i * 15} 90% 50%))` }}
+          />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium truncate">Render #{840 - i}</p>
+            <p className="text-[10px] text-muted-foreground">{i === 0 ? "Just now" : `${i * 12} min ago`}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+export const StudioShell = (props: StudioShellProps) => {
+  const { title, accent, icon: Icon, results } = props;
   const [prompt, setPrompt] = useState("");
   const [rendering, setRendering] = useState(false);
+  const ctrl = { ...props, prompt, setPrompt, rendering, setRendering };
 
   return (
-    <div className="grid lg:grid-cols-[320px_1fr_320px] min-h-[calc(100vh-4rem)]">
-      {/* Left: prompt + controls */}
-      <aside className="border-r border-border/60 p-6 space-y-6 overflow-y-auto">
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            <div className={`h-9 w-9 rounded-lg bg-gradient-to-br ${accent} flex items-center justify-center`}>
-              <Icon className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <h1 className="font-display text-2xl leading-none">{title}</h1>
-              <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
-            </div>
+    <div className="lg:grid lg:grid-cols-[320px_1fr_320px] min-h-[calc(100vh-4rem)]">
+      {/* Mobile toolbar */}
+      <div className="lg:hidden flex items-center justify-between gap-2 px-4 py-3 border-b border-border/60 sticky top-16 bg-background/90 backdrop-blur-xl z-20">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className={`h-8 w-8 rounded-lg bg-gradient-to-br ${accent} flex items-center justify-center shrink-0`}>
+            <Icon className="h-4 w-4 text-white" />
           </div>
+          <span className="font-display text-lg truncate">{title}</span>
         </div>
-
-        <div>
-          <label className="text-xs uppercase tracking-widest text-muted-foreground">Prompt</label>
-          <Textarea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder={promptPlaceholder}
-            className="mt-2 min-h-32 bg-muted/30 border-border/60 resize-none"
-          />
-          <div className="flex gap-2 mt-2">
-            <Button variant="outline" size="sm" className="flex-1 glass border-border/60">
-              <Wand2 className="h-3.5 w-3.5 mr-1.5" /> Enhance
-            </Button>
-            <Button variant="outline" size="sm" className="glass border-border/60">
-              <Upload className="h-3.5 w-3.5" />
-            </Button>
-          </div>
+        <div className="flex gap-2 shrink-0">
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="sm" className="glass border-border/60">
+                <SlidersHorizontal className="h-4 w-4" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="p-0 w-[88vw] sm:w-96 bg-background border-border/60 overflow-y-auto">
+              <Controls {...ctrl} />
+            </SheetContent>
+          </Sheet>
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="sm" className="glass border-border/60">
+                <History className="h-4 w-4" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="p-0 w-[88vw] sm:w-80 bg-background border-border/60 overflow-y-auto">
+              <History_ />
+            </SheetContent>
+          </Sheet>
         </div>
+      </div>
 
-        <div>
-          <label className="text-xs uppercase tracking-widest text-muted-foreground">Model</label>
-          <Select defaultValue={models[0]}>
-            <SelectTrigger className="mt-2 bg-muted/30 border-border/60">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {models.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div>
-          <label className="text-xs uppercase tracking-widest text-muted-foreground">Style preset</label>
-          <div className="grid grid-cols-2 gap-2 mt-2">
-            {presets.map((p, i) => (
-              <button key={p} className={`text-xs px-3 py-2 rounded-lg border transition ${i === 0 ? "border-primary/50 bg-primary/10 text-foreground" : "border-border/60 text-muted-foreground hover:border-border"}`}>
-                {p}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <div className="flex justify-between mb-2">
-            <label className="text-xs uppercase tracking-widest text-muted-foreground">Creativity</label>
-            <span className="text-xs font-mono">0.7</span>
-          </div>
-          <Slider defaultValue={[70]} max={100} className="" />
-        </div>
-
-        <Button
-          onClick={() => { setRendering(true); setTimeout(() => setRendering(false), 2200); }}
-          disabled={rendering}
-          className={`w-full bg-gradient-to-r ${accent} text-white border-0 shadow-glow h-11`}
-        >
-          {rendering ? (
-            <><RefreshCw className="h-4 w-4 mr-2 animate-spin" /> Rendering…</>
-          ) : (
-            <><Sparkles className="h-4 w-4 mr-2" /> Generate · 12 credits</>
-          )}
-        </Button>
+      {/* Left controls (desktop) */}
+      <aside className="hidden lg:block border-r border-border/60 overflow-y-auto">
+        <Controls {...ctrl} />
       </aside>
 
-      {/* Center: canvas */}
-      <section className="p-8 overflow-y-auto bg-nebula relative">
+      {/* Center canvas */}
+      <section className="p-4 sm:p-6 lg:p-8 overflow-y-auto bg-nebula relative">
         <div className="absolute inset-0 grid-bg opacity-10" />
         <div className="relative">
           <Tabs defaultValue="grid" className="mb-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <TabsList className="glass">
                 <TabsTrigger value="grid">Grid</TabsTrigger>
                 <TabsTrigger value="canvas">Canvas</TabsTrigger>
-                <TabsTrigger value="timeline">Timeline</TabsTrigger>
+                <TabsTrigger value="timeline" className="hidden sm:inline-flex">Timeline</TabsTrigger>
               </TabsList>
-              <div className="flex gap-2">
+              <div className="flex gap-1">
                 <Button variant="ghost" size="sm"><Settings2 className="h-4 w-4" /></Button>
                 <Button variant="ghost" size="sm"><Download className="h-4 w-4" /></Button>
               </div>
             </div>
           </Tabs>
 
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             {results.map((r, i) => (
               <motion.div
                 key={i}
@@ -145,23 +196,9 @@ export const StudioShell = ({ title, subtitle, accent, icon: Icon, promptPlaceho
         </div>
       </section>
 
-      {/* Right: history */}
-      <aside className="border-l border-border/60 p-6 overflow-y-auto">
-        <p className="text-xs uppercase tracking-widest text-muted-foreground mb-4">Render history</p>
-        <div className="space-y-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="flex gap-3 group cursor-pointer">
-              <div
-                className="h-14 w-20 rounded-lg flex-shrink-0"
-                style={{ background: `linear-gradient(${130 + i * 30}deg, hsl(${260 + i * 25} 80% 55%), hsl(${190 + i * 15} 90% 50%))` }}
-              />
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium truncate">Render #{840 - i}</p>
-                <p className="text-[10px] text-muted-foreground">{i === 0 ? "Just now" : `${i * 12} min ago`}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+      {/* Right history (desktop) */}
+      <aside className="hidden lg:block border-l border-border/60 overflow-y-auto">
+        <History_ />
       </aside>
     </div>
   );
