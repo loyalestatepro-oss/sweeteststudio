@@ -5,9 +5,9 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 
 const Settings = () => (
-  <div className="p-8 max-w-3xl space-y-8">
+  <div className="p-4 sm:p-6 lg:p-8 max-w-3xl space-y-8">
     <div>
-      <h1 className="font-display text-4xl">Settings</h1>
+      <h1 className="font-display text-3xl sm:text-4xl">Settings</h1>
       <p className="text-sm text-muted-foreground mt-1">Workspace preferences.</p>
     </div>
 

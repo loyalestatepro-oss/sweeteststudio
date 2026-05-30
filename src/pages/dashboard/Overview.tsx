@@ -17,14 +17,14 @@ const recent = [
 ];
 
 const Overview = () => (
-  <div className="p-8 space-y-10 max-w-7xl">
+  <div className="p-4 sm:p-6 lg:p-8 space-y-8 sm:space-y-10 max-w-7xl">
     {/* Hero greeting */}
-    <div className="relative overflow-hidden rounded-2xl glass-strong p-8 bg-nebula">
+    <div className="relative overflow-hidden rounded-2xl glass-strong p-6 sm:p-8 bg-nebula">
       <div className="absolute inset-0 grid-bg opacity-20" />
       <div className="relative flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div>
           <p className="text-xs uppercase tracking-widest text-primary-glow mb-2">Good evening, Studio</p>
-          <h1 className="font-display text-4xl md:text-5xl">Ready to make something <em className="text-aurora not-italic">extraordinary?</em></h1>
+          <h1 className="font-display text-3xl sm:text-4xl md:text-5xl">Ready to make something <em className="text-aurora not-italic">extraordinary?</em></h1>
         </div>
         <Link to="/app/video" className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-gradient-primary text-primary-foreground shadow-glow text-sm">
           <Sparkles className="h-4 w-4" /> Start with Video
@@ -33,7 +33,7 @@ const Overview = () => (
     </div>
 
     {/* Stats */}
-    <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
       {[
         { label: "Renders this month", value: "248", delta: "+34%", icon: TrendingUp },
         { label: "Active projects", value: "12", delta: "3 due", icon: Clock },
