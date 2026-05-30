@@ -10,21 +10,21 @@ const templates = Array.from({ length: 12 }).map((_, i) => ({
 }));
 
 const Templates = () => (
-  <div className="p-8 max-w-7xl space-y-6">
+  <div className="p-4 sm:p-6 lg:p-8 max-w-7xl space-y-6">
     <div>
-      <h1 className="font-display text-4xl flex items-center gap-3">
-        <Sparkles className="h-7 w-7 text-primary-glow" /> Templates
+      <h1 className="font-display text-3xl sm:text-4xl flex items-center gap-3">
+        <Sparkles className="h-6 w-6 sm:h-7 sm:w-7 text-primary-glow" /> Templates
       </h1>
       <p className="text-sm text-muted-foreground mt-1">Production-ready starting points — fork, remix, ship.</p>
     </div>
 
     <Tabs defaultValue="All">
-      <TabsList className="glass">
+      <TabsList className="glass flex-wrap h-auto">
         {cats.map((c) => <TabsTrigger key={c} value={c}>{c}</TabsTrigger>)}
       </TabsList>
     </Tabs>
 
-    <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
       {templates.map((t) => (
         <div key={t.name} className="group glass rounded-2xl overflow-hidden cursor-pointer hover:border-primary/40 transition-all hover:-translate-y-1">
           <div className="aspect-[4/5] noise relative" style={{ background: t.gradient }}>

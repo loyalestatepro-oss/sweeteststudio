@@ -41,31 +41,31 @@ const Landing = () => {
       <SiteNav />
 
       {/* HERO */}
-      <section className="relative pt-40 pb-32 bg-nebula noise">
+      <section className="relative pt-28 sm:pt-40 pb-20 sm:pb-32 bg-nebula noise">
         <div className="absolute inset-0 grid-bg opacity-30 [mask-image:radial-gradient(ellipse_at_center,black,transparent_70%)]" />
         <div className="container relative">
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
-            className="max-w-4xl mx-auto text-center space-y-8"
+            className="max-w-4xl mx-auto text-center space-y-6 sm:space-y-8"
           >
             <Badge variant="outline" className="glass border-primary/30 text-foreground/90 px-4 py-1.5 rounded-full">
               <Sparkles className="h-3 w-3 mr-2 text-primary-glow" />
-              <span className="text-xs tracking-wider">INTRODUCING NEBULA STUDIO · v1.0</span>
+              <span className="text-[10px] sm:text-xs tracking-wider">INTRODUCING NEBULA STUDIO · v1.0</span>
             </Badge>
 
-            <h1 className="font-display text-6xl md:text-8xl leading-[0.95]">
+            <h1 className="font-display text-4xl sm:text-6xl md:text-8xl leading-[0.95]">
               The creative <em className="text-aurora not-italic">operating system</em><br />
               for AI-native studios.
             </h1>
 
-            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+            <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
               Generate cinematic video, image, music, voice, and avatars in one premium workspace.
               Built for the creators, agencies and brands defining what comes next.
             </p>
 
-            <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
+            <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center justify-center gap-3 sm:gap-4 pt-2 sm:pt-4">
               <Button asChild size="lg" className="bg-gradient-primary text-primary-foreground hover:opacity-90 border-0 shadow-glow rounded-full h-12 px-6">
                 <Link to="/app">Start creating — it's free <ArrowRight className="ml-2 h-4 w-4" /></Link>
               </Button>
@@ -74,7 +74,7 @@ const Landing = () => {
               </Button>
             </div>
 
-            <div className="flex items-center justify-center gap-6 pt-6 text-xs text-muted-foreground">
+            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 pt-4 sm:pt-6 text-xs text-muted-foreground">
               <span className="flex items-center gap-1.5"><Check className="h-3 w-3 text-accent" /> No credit card</span>
               <span className="flex items-center gap-1.5"><Check className="h-3 w-3 text-accent" /> 200 free credits</span>
               <span className="flex items-center gap-1.5"><Check className="h-3 w-3 text-accent" /> Cancel anytime</span>
@@ -96,7 +96,7 @@ const Landing = () => {
                 <span className="h-3 w-3 rounded-full bg-accent/70" />
                 <span className="ml-4 font-mono text-xs text-muted-foreground">nebula.studio / project / aurora-campaign</span>
               </div>
-              <div className="grid md:grid-cols-[220px_1fr_280px] min-h-[460px]">
+              <div className="grid md:grid-cols-[220px_1fr_280px] min-h-[320px] md:min-h-[460px]">
                 <div className="border-r border-border/60 p-4 space-y-1 bg-card/40">
                   {["Video", "Image", "Music", "Voice", "Avatar"].map((s, i) => (
                     <div key={s} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${i === 0 ? "bg-primary/15 text-foreground" : "text-muted-foreground hover:bg-muted/40"}`}>
@@ -155,11 +155,11 @@ const Landing = () => {
       </section>
 
       {/* STUDIOS */}
-      <section id="studios" className="py-32 relative">
+      <section id="studios" className="py-20 sm:py-32 relative">
         <div className="container">
-          <div className="max-w-2xl mb-16">
+          <div className="max-w-2xl mb-10 sm:mb-16">
             <p className="text-xs uppercase tracking-widest text-primary-glow mb-3">Six studios, one canvas</p>
-            <h2 className="font-display text-5xl md:text-6xl leading-tight">
+            <h2 className="font-display text-4xl sm:text-5xl md:text-6xl leading-tight">
               Every modality. <em className="text-aurora not-italic">Zero context-switching.</em>
             </h2>
           </div>
@@ -192,11 +192,11 @@ const Landing = () => {
       </section>
 
       {/* FEATURES */}
-      <section className="py-32 bg-nebula relative">
+      <section className="py-20 sm:py-32 bg-nebula relative">
         <div className="container relative">
-          <div className="max-w-2xl mb-16">
+          <div className="max-w-2xl mb-10 sm:mb-16">
             <p className="text-xs uppercase tracking-widest text-accent mb-3">Built for production</p>
-            <h2 className="font-display text-5xl md:text-6xl leading-tight">
+            <h2 className="font-display text-4xl sm:text-5xl md:text-6xl leading-tight">
               The infrastructure your <em className="text-aurora not-italic">studio deserves.</em>
             </h2>
           </div>
@@ -213,11 +213,11 @@ const Landing = () => {
       </section>
 
       {/* TESTIMONIALS */}
-      <section id="templates" className="py-32">
+      <section id="templates" className="py-20 sm:py-32">
         <div className="container">
-          <div className="text-center max-w-2xl mx-auto mb-16">
+          <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-16">
             <p className="text-xs uppercase tracking-widest text-gold mb-3">Loved by the best in the world</p>
-            <h2 className="font-display text-5xl md:text-6xl leading-tight">
+            <h2 className="font-display text-4xl sm:text-5xl md:text-6xl leading-tight">
               <em className="text-aurora not-italic">Six-figure</em> campaigns. Shipped from a laptop.
             </h2>
           </div>
@@ -239,16 +239,16 @@ const Landing = () => {
       </section>
 
       {/* CTA */}
-      <section className="py-32">
+      <section className="py-20 sm:py-32">
         <div className="container">
-          <div className="relative overflow-hidden rounded-3xl glass-strong p-16 text-center">
+          <div className="relative overflow-hidden rounded-3xl glass-strong p-8 sm:p-16 text-center">
             <div className="absolute inset-0 bg-aurora opacity-20" />
             <div className="absolute inset-0 grid-bg opacity-20" />
             <div className="relative space-y-6 max-w-2xl mx-auto">
-              <h2 className="font-display text-5xl md:text-7xl leading-[0.95]">
+              <h2 className="font-display text-4xl sm:text-5xl md:text-7xl leading-[0.95]">
                 Your next masterpiece <em className="text-aurora not-italic">starts tonight.</em>
               </h2>
-              <p className="text-lg text-muted-foreground">Join 80,000+ creators already shipping with Nebula.</p>
+              <p className="text-base sm:text-lg text-muted-foreground">Join 80,000+ creators already shipping with Nebula.</p>
               <Button asChild size="lg" className="bg-gradient-primary text-primary-foreground hover:opacity-90 border-0 shadow-glow rounded-full h-12 px-6 mt-4">
                 <Link to="/app">Launch the Studio <ArrowRight className="ml-2 h-4 w-4" /></Link>
               </Button>

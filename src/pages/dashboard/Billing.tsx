@@ -8,9 +8,9 @@ const invoices = [
 ];
 
 const Billing = () => (
-  <div className="p-8 max-w-5xl space-y-8">
+  <div className="p-4 sm:p-6 lg:p-8 max-w-5xl space-y-8">
     <div>
-      <h1 className="font-display text-4xl">Billing</h1>
+      <h1 className="font-display text-3xl sm:text-4xl">Billing</h1>
       <p className="text-sm text-muted-foreground mt-1">Manage your plan, credits, and invoices.</p>
     </div>
 
@@ -57,14 +57,14 @@ const Billing = () => (
       </div>
       <div className="divide-y divide-border/40">
         {invoices.map((i) => (
-          <div key={i.id} className="px-6 py-4 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-mono">{i.id}</p>
+          <div key={i.id} className="px-4 sm:px-6 py-4 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-mono truncate">{i.id}</p>
               <p className="text-xs text-muted-foreground">{i.date}</p>
             </div>
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-3 sm:gap-6 shrink-0">
               <span className="text-sm">{i.amount}</span>
-              <span className="inline-flex items-center gap-1 text-xs text-accent">
+              <span className="hidden sm:inline-flex items-center gap-1 text-xs text-accent">
                 <Check className="h-3 w-3" /> {i.status}
               </span>
               <Button variant="ghost" size="icon"><Download className="h-4 w-4" /></Button>

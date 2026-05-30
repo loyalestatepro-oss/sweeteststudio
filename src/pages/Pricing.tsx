@@ -42,15 +42,15 @@ const tiers = [
 const Pricing = () => (
   <div className="min-h-screen bg-background">
     <SiteNav />
-    <section className="pt-40 pb-20 bg-nebula noise">
+    <section className="pt-28 sm:pt-40 pb-16 sm:pb-20 bg-nebula noise">
       <div className="container text-center max-w-3xl mx-auto space-y-6">
         <span className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-primary-glow">
           <Sparkles className="h-3 w-3" /> Pricing
         </span>
-        <h1 className="font-display text-6xl md:text-7xl leading-[0.95]">
+        <h1 className="font-display text-4xl sm:text-6xl md:text-7xl leading-[0.95]">
           One workspace. <em className="text-aurora not-italic">Every modality.</em>
         </h1>
-        <p className="text-lg text-muted-foreground">Stop paying for six different AI tools. Pay for one that does it all — better.</p>
+        <p className="text-base sm:text-lg text-muted-foreground">Stop paying for six different AI tools. Pay for one that does it all — better.</p>
       </div>
     </section>
 

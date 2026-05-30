@@ -12,13 +12,13 @@ const projects = [
 ];
 
 const Projects = () => (
-  <div className="p-8 max-w-7xl space-y-6">
-    <div className="flex items-center justify-between">
+  <div className="p-4 sm:p-6 lg:p-8 max-w-7xl space-y-6">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
-        <h1 className="font-display text-4xl">Projects</h1>
+        <h1 className="font-display text-3xl sm:text-4xl">Projects</h1>
         <p className="text-sm text-muted-foreground mt-1">All your creative work in one place.</p>
       </div>
-      <Button className="bg-gradient-primary text-primary-foreground border-0 shadow-glow">
+      <Button className="bg-gradient-primary text-primary-foreground border-0 shadow-glow w-full sm:w-auto">
         <Plus className="h-4 w-4 mr-2" /> New project
       </Button>
     </div>
