@@ -92,7 +92,7 @@ const Pricing = () => (
                   : "bg-secondary hover:bg-secondary/80"
               }
             >
-              <Link to="/app">{t.cta}</Link>
+              <Link to={t.name === "Enterprise" ? "/pricing" : "/signup"}>{t.cta}</Link>
             </Button>
           </div>
         ))}
