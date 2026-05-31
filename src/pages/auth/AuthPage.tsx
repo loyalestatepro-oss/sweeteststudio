@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuthStore } from "@/store/useAuthStore";
 import { Logo } from "@/components/Logo";
@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { Eye, EyeOff, Sparkles, Mail, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff, Sparkles, Mail, ArrowLeft, AlertCircle, RefreshCw } from "lucide-react";
 
 const announceDevCode = (code: string) =>
   toast.message("Verification code sent", {
