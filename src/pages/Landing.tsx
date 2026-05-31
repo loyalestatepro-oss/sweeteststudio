@@ -67,9 +67,9 @@ const Landing = () => {
 
             <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center justify-center gap-3 sm:gap-4 pt-2 sm:pt-4">
               <Button asChild size="lg" className="bg-gradient-primary text-primary-foreground hover:opacity-90 border-0 shadow-glow rounded-full h-12 px-6">
-                <Link to="/app">Start creating — it's free <ArrowRight className="ml-2 h-4 w-4" /></Link>
+                <Link to="/signup">Start creating — it's free <ArrowRight className="ml-2 h-4 w-4" /></Link>
               </Button>
-              <Button variant="outline" size="lg" className="glass rounded-full h-12 px-6 border-border/60">
+              <Button variant="outline" size="lg" className="glass rounded-full h-12 px-6 border-border/60" onClick={() => window.open("https://www.youtube.com/watch?v=dQw4w9WgXcQ", "_blank")}>
                 <Play className="mr-2 h-4 w-4 text-primary-glow" /> Watch the film
               </Button>
             </div>
