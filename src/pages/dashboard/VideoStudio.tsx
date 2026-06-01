@@ -18,6 +18,7 @@ const VideoStudio = () => (
     models={["nebula-cinematic-1080", "veo-3-preview", "sora-turbo", "kling-2.0", "runway-gen4"]}
     presets={["Cinematic", "Anime", "Photoreal", "Hand-drawn", "Vintage", "Sci-fi"]}
     results={results}
+    kind="video"
   />
 );
 

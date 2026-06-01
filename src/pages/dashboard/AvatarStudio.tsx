@@ -18,6 +18,7 @@ const AvatarStudio = () => (
     models={["nebula-avatar-pro", "heygen-v4", "synthesia-2", "did-premium"]}
     presets={["Studio", "Outdoor", "Office", "News desk", "Casual", "Cinematic"]}
     results={results}
+    kind="avatar"
   />
 );
 
