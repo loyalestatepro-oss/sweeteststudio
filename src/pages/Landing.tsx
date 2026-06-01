@@ -29,6 +29,60 @@ const features = [
   { icon: Zap, title: "Workflow automation", desc: "Templates, batch jobs, API access, Zapier & webhooks." },
 ];
 
+const templates = [
+  {
+    kind: "video" as const,
+    title: "Cinematic Product Reveal",
+    category: "Commercial",
+    duration: "0:08",
+    model: "nebula-cinematic-1080",
+    src: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
+    poster: "https://image.pollinations.ai/prompt/luxury%20product%20cinematic%20reveal%20gold%20bokeh%20studio%20light?width=800&height=450&seed=101&nologo=true",
+  },
+  {
+    kind: "video" as const,
+    title: "Fashion Editorial Loop",
+    category: "Fashion",
+    duration: "0:12",
+    model: "nebula-runway-v3",
+    src: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
+    poster: "https://image.pollinations.ai/prompt/high%20fashion%20editorial%20portrait%20holographic%20vogue%20cover%208k?width=800&height=450&seed=102&nologo=true",
+  },
+  {
+    kind: "image" as const,
+    title: "Hyperreal Portrait",
+    category: "Portrait",
+    duration: "4K",
+    model: "nebula-flux-pro",
+    src: "https://image.pollinations.ai/prompt/hyperreal%20cinematic%20portrait%20dramatic%20rim%20light%20kodak%20portra?width=900&height=1100&seed=201&nologo=true",
+  },
+  {
+    kind: "image" as const,
+    title: "Neon Tokyo Nightscape",
+    category: "Environment",
+    duration: "8K",
+    model: "nebula-vision-xl",
+    src: "https://image.pollinations.ai/prompt/neon%20tokyo%20shibuya%20rain%20night%20cinematic%20blade%20runner?width=1200&height=750&seed=202&nologo=true",
+  },
+  {
+    kind: "video" as const,
+    title: "Brand Anthem Trailer",
+    category: "Campaign",
+    duration: "0:15",
+    model: "nebula-cinematic-1080",
+    src: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+    poster: "https://image.pollinations.ai/prompt/epic%20brand%20anthem%20trailer%20mountain%20sunrise%20athlete%20silhouette?width=800&height=450&seed=103&nologo=true",
+  },
+  {
+    kind: "image" as const,
+    title: "Luxury Still Life",
+    category: "Product",
+    duration: "4K",
+    model: "nebula-flux-pro",
+    src: "https://image.pollinations.ai/prompt/luxury%20perfume%20bottle%20marble%20pedestal%20golden%20hour%20softbox?width=900&height=1100&seed=203&nologo=true",
+  },
+];
+
 const testimonials = [
   { quote: "Replaced three subscriptions and a contractor. Our campaign velocity tripled.", author: "Amelia Ngata", role: "Creative Director, Lumen Agency" },
   { quote: "The render quality is genuinely indistinguishable from our hand-edited shoots.", author: "Daichi Mori", role: "Founder, Polaris Films" },
@@ -108,10 +162,10 @@ const Landing = () => {
                 <div className="p-6 relative overflow-hidden">
                   <div className="grid grid-cols-2 gap-3 h-full">
                     {[
-                      { src: "https://image.pollinations.ai/prompt/neon%20drenched%20cyberpunk%20skyline%20at%20dusk%2C%20anamorphic%20lens%2C%20drifting%20fog%2C%20cinematic%2035mm%2C%20ultra%20detailed?width=800&height=450&seed=11&nologo=true", label: "v1.0" },
-                      { src: "https://image.pollinations.ai/prompt/futuristic%20fashion%20editorial%20portrait%2C%20holographic%20lighting%2C%20vogue%20cover%2C%208k?width=800&height=450&seed=22&nologo=true", label: "v2.1" },
-                      { src: "https://image.pollinations.ai/prompt/luxury%20glass%20perfume%20bottle%20on%20marble%2C%20studio%20softbox%2C%20product%20photography?width=800&height=450&seed=33&nologo=true", label: "v3.2" },
-                      { src: "https://image.pollinations.ai/prompt/aurora%20borealis%20over%20mountain%20lake%2C%20cinematic%20wide%20shot%2C%20volumetric%20light?width=800&height=450&seed=44&nologo=true", label: "v4.3" },
+                      { type: "video", src: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4", poster: "https://image.pollinations.ai/prompt/neon%20cyberpunk%20skyline%20cinematic%2035mm?width=800&height=450&seed=11&nologo=true", label: "v1.0 · live" },
+                      { type: "image", src: "https://image.pollinations.ai/prompt/futuristic%20fashion%20editorial%20portrait%20holographic%20vogue%208k?width=800&height=450&seed=22&nologo=true", label: "v2.1" },
+                      { type: "image", src: "https://image.pollinations.ai/prompt/luxury%20glass%20perfume%20bottle%20marble%20studio%20softbox?width=800&height=450&seed=33&nologo=true", label: "v3.2" },
+                      { type: "image", src: "https://image.pollinations.ai/prompt/aurora%20borealis%20mountain%20lake%20cinematic%20wide%20volumetric?width=800&height=450&seed=44&nologo=true", label: "v4.3" },
                     ].map((tile, i) => (
                       <motion.div
                         key={i}
@@ -120,7 +174,19 @@ const Landing = () => {
                         transition={{ delay: 0.6 + i * 0.15 }}
                         className="relative rounded-xl overflow-hidden aspect-video bg-muted/40"
                       >
-                        <img src={tile.src} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
+                        {tile.type === "video" ? (
+                          <video
+                            src={tile.src}
+                            poster={tile.poster}
+                            autoPlay
+                            muted
+                            loop
+                            playsInline
+                            className="absolute inset-0 h-full w-full object-cover"
+                          />
+                        ) : (
+                          <img src={tile.src} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
+                        )}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                         <div className="absolute bottom-2 left-3 text-xs font-mono text-white/90">{tile.label}</div>
                       </motion.div>
@@ -217,8 +283,96 @@ const Landing = () => {
         </div>
       </section>
 
+      {/* TEMPLATES GALLERY */}
+      <section id="templates" className="py-20 sm:py-32 relative">
+        <div className="absolute inset-0 bg-aurora opacity-[0.04] pointer-events-none" />
+        <div className="container relative">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10 sm:mb-14">
+            <div className="max-w-2xl">
+              <p className="text-xs uppercase tracking-widest text-primary-glow mb-3">Start from a template</p>
+              <h2 className="font-display text-4xl sm:text-5xl md:text-6xl leading-tight">
+                Cinema-grade <em className="text-aurora not-italic">starting points.</em>
+              </h2>
+              <p className="text-muted-foreground mt-4 text-base sm:text-lg">
+                Remix proven templates used by leading agencies. Swap the model, the prompt, the brand kit — ship in minutes.
+              </p>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              {["All", "Commercial", "Fashion", "Portrait", "Product"].map((c, i) => (
+                <button key={c} className={`px-4 py-2 rounded-full text-xs font-medium transition ${i === 0 ? "bg-primary/15 text-foreground border border-primary/40" : "glass border border-border/60 text-muted-foreground hover:text-foreground"}`}>{c}</button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+            {templates.map((t, i) => (
+              <motion.div
+                key={t.title}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-80px" }}
+                transition={{ delay: i * 0.06, duration: 0.6 }}
+                className="group relative glass rounded-2xl overflow-hidden border border-border/60 hover:border-primary/40 transition-all hover:-translate-y-1"
+              >
+                <div className="relative aspect-[4/5] overflow-hidden bg-muted/40">
+                  {t.kind === "video" ? (
+                    <video
+                      src={t.src}
+                      poster={t.poster}
+                      muted
+                      loop
+                      playsInline
+                      preload="metadata"
+                      onMouseEnter={(e) => e.currentTarget.play().catch(() => {})}
+                      onMouseLeave={(e) => { e.currentTarget.pause(); e.currentTarget.currentTime = 0; }}
+                      className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    />
+                  ) : (
+                    <img
+                      src={t.src}
+                      alt={t.title}
+                      loading="lazy"
+                      className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
+
+                  <div className="absolute top-3 left-3 flex items-center gap-2">
+                    <span className="glass px-2.5 py-1 rounded-full text-[10px] font-mono uppercase tracking-wider text-foreground/90 backdrop-blur-md">
+                      {t.category}
+                    </span>
+                  </div>
+                  <div className="absolute top-3 right-3">
+                    <span className="glass px-2 py-1 rounded-md text-[10px] font-mono text-foreground/90 backdrop-blur-md flex items-center gap-1">
+                      {t.kind === "video" ? <Play className="h-3 w-3 text-primary-glow" /> : <ImageIcon className="h-3 w-3 text-primary-glow" />}
+                      {t.duration}
+                    </span>
+                  </div>
+
+                  <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
+                    <h3 className="font-display text-xl sm:text-2xl leading-tight">{t.title}</h3>
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-[11px] font-mono text-muted-foreground">{t.model}</span>
+                      <span className="text-xs text-primary-glow flex items-center opacity-0 group-hover:opacity-100 transition">
+                        Remix <ArrowRight className="ml-1 h-3 w-3" />
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          <div className="flex justify-center mt-10 sm:mt-14">
+            <Button asChild variant="outline" size="lg" className="glass rounded-full h-12 px-6 border-border/60">
+              <Link to="/app/templates">Browse all 240+ templates <ArrowRight className="ml-2 h-4 w-4" /></Link>
+            </Button>
+          </div>
+        </div>
+      </section>
+
       {/* TESTIMONIALS */}
-      <section id="templates" className="py-20 sm:py-32">
+      <section className="py-20 sm:py-32">
         <div className="container">
           <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-16">
             <p className="text-xs uppercase tracking-widest text-gold mb-3">Loved by the best in the world</p>
