@@ -18,6 +18,7 @@ const VoiceStudio = () => (
     models={["nebula-voice-natural", "elevenlabs-v3", "playht-3", "openai-tts-hd"]}
     presets={["Narration", "Conversational", "News", "Cinematic", "Whisper", "Energetic"]}
     results={results}
+    kind="audio"
   />
 );
 

@@ -18,6 +18,7 @@ const ImageStudio = () => (
     models={["nebula-image-xl", "midjourney-v7", "flux-pro", "ideogram-2", "imagen-3"]}
     presets={["Editorial", "Product", "Illustration", "3D render", "Anime", "Sketch"]}
     results={results}
+    kind="image"
   />
 );
 

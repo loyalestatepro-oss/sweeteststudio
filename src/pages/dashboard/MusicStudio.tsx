@@ -18,6 +18,7 @@ const MusicStudio = () => (
     models={["nebula-music-v2", "suno-v4", "udio-1.5", "musicgen-large"]}
     presets={["Pop", "Cinematic", "Lo-fi", "Electronic", "Acoustic", "Hip-hop"]}
     results={results}
+    kind="audio"
   />
 );
 
