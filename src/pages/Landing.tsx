@@ -107,17 +107,22 @@ const Landing = () => {
                 </div>
                 <div className="p-6 relative overflow-hidden">
                   <div className="grid grid-cols-2 gap-3 h-full">
-                    {[0,1,2,3].map((i) => (
+                    {[
+                      { src: "https://image.pollinations.ai/prompt/neon%20drenched%20cyberpunk%20skyline%20at%20dusk%2C%20anamorphic%20lens%2C%20drifting%20fog%2C%20cinematic%2035mm%2C%20ultra%20detailed?width=800&height=450&seed=11&nologo=true", label: "v1.0" },
+                      { src: "https://image.pollinations.ai/prompt/futuristic%20fashion%20editorial%20portrait%2C%20holographic%20lighting%2C%20vogue%20cover%2C%208k?width=800&height=450&seed=22&nologo=true", label: "v2.1" },
+                      { src: "https://image.pollinations.ai/prompt/luxury%20glass%20perfume%20bottle%20on%20marble%2C%20studio%20softbox%2C%20product%20photography?width=800&height=450&seed=33&nologo=true", label: "v3.2" },
+                      { src: "https://image.pollinations.ai/prompt/aurora%20borealis%20over%20mountain%20lake%2C%20cinematic%20wide%20shot%2C%20volumetric%20light?width=800&height=450&seed=44&nologo=true", label: "v4.3" },
+                    ].map((tile, i) => (
                       <motion.div
                         key={i}
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: 0.6 + i * 0.15 }}
-                        className="relative rounded-xl overflow-hidden bg-gradient-to-br aspect-video"
-                        style={{ background: `linear-gradient(${135 + i * 40}deg, hsl(${260 + i * 30} 80% 55%), hsl(${190 + i * 20} 90% 50%))` }}
+                        className="relative rounded-xl overflow-hidden aspect-video bg-muted/40"
                       >
-                        <div className="absolute inset-0 noise" />
-                        <div className="absolute bottom-2 left-3 text-xs font-mono text-white/80">v{i + 1}.{i}</div>
+                        <img src={tile.src} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                        <div className="absolute bottom-2 left-3 text-xs font-mono text-white/90">{tile.label}</div>
                       </motion.div>
                     ))}
                   </div>
