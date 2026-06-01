@@ -162,10 +162,10 @@ const Landing = () => {
                 <div className="p-6 relative overflow-hidden">
                   <div className="grid grid-cols-2 gap-3 h-full">
                     {[
-                      { src: "https://image.pollinations.ai/prompt/neon%20drenched%20cyberpunk%20skyline%20at%20dusk%2C%20anamorphic%20lens%2C%20drifting%20fog%2C%20cinematic%2035mm%2C%20ultra%20detailed?width=800&height=450&seed=11&nologo=true", label: "v1.0" },
-                      { src: "https://image.pollinations.ai/prompt/futuristic%20fashion%20editorial%20portrait%2C%20holographic%20lighting%2C%20vogue%20cover%2C%208k?width=800&height=450&seed=22&nologo=true", label: "v2.1" },
-                      { src: "https://image.pollinations.ai/prompt/luxury%20glass%20perfume%20bottle%20on%20marble%2C%20studio%20softbox%2C%20product%20photography?width=800&height=450&seed=33&nologo=true", label: "v3.2" },
-                      { src: "https://image.pollinations.ai/prompt/aurora%20borealis%20over%20mountain%20lake%2C%20cinematic%20wide%20shot%2C%20volumetric%20light?width=800&height=450&seed=44&nologo=true", label: "v4.3" },
+                      { type: "video", src: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4", poster: "https://image.pollinations.ai/prompt/neon%20cyberpunk%20skyline%20cinematic%2035mm?width=800&height=450&seed=11&nologo=true", label: "v1.0 · live" },
+                      { type: "image", src: "https://image.pollinations.ai/prompt/futuristic%20fashion%20editorial%20portrait%20holographic%20vogue%208k?width=800&height=450&seed=22&nologo=true", label: "v2.1" },
+                      { type: "image", src: "https://image.pollinations.ai/prompt/luxury%20glass%20perfume%20bottle%20marble%20studio%20softbox?width=800&height=450&seed=33&nologo=true", label: "v3.2" },
+                      { type: "image", src: "https://image.pollinations.ai/prompt/aurora%20borealis%20mountain%20lake%20cinematic%20wide%20volumetric?width=800&height=450&seed=44&nologo=true", label: "v4.3" },
                     ].map((tile, i) => (
                       <motion.div
                         key={i}
@@ -174,7 +174,19 @@ const Landing = () => {
                         transition={{ delay: 0.6 + i * 0.15 }}
                         className="relative rounded-xl overflow-hidden aspect-video bg-muted/40"
                       >
-                        <img src={tile.src} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
+                        {tile.type === "video" ? (
+                          <video
+                            src={tile.src}
+                            poster={tile.poster}
+                            autoPlay
+                            muted
+                            loop
+                            playsInline
+                            className="absolute inset-0 h-full w-full object-cover"
+                          />
+                        ) : (
+                          <img src={tile.src} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
+                        )}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                         <div className="absolute bottom-2 left-3 text-xs font-mono text-white/90">{tile.label}</div>
                       </motion.div>
