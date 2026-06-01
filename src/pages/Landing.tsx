@@ -283,8 +283,96 @@ const Landing = () => {
         </div>
       </section>
 
+      {/* TEMPLATES GALLERY */}
+      <section id="templates" className="py-20 sm:py-32 relative">
+        <div className="absolute inset-0 bg-aurora opacity-[0.04] pointer-events-none" />
+        <div className="container relative">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10 sm:mb-14">
+            <div className="max-w-2xl">
+              <p className="text-xs uppercase tracking-widest text-primary-glow mb-3">Start from a template</p>
+              <h2 className="font-display text-4xl sm:text-5xl md:text-6xl leading-tight">
+                Cinema-grade <em className="text-aurora not-italic">starting points.</em>
+              </h2>
+              <p className="text-muted-foreground mt-4 text-base sm:text-lg">
+                Remix proven templates used by leading agencies. Swap the model, the prompt, the brand kit — ship in minutes.
+              </p>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              {["All", "Commercial", "Fashion", "Portrait", "Product"].map((c, i) => (
+                <button key={c} className={`px-4 py-2 rounded-full text-xs font-medium transition ${i === 0 ? "bg-primary/15 text-foreground border border-primary/40" : "glass border border-border/60 text-muted-foreground hover:text-foreground"}`}>{c}</button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+            {templates.map((t, i) => (
+              <motion.div
+                key={t.title}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-80px" }}
+                transition={{ delay: i * 0.06, duration: 0.6 }}
+                className="group relative glass rounded-2xl overflow-hidden border border-border/60 hover:border-primary/40 transition-all hover:-translate-y-1"
+              >
+                <div className="relative aspect-[4/5] overflow-hidden bg-muted/40">
+                  {t.kind === "video" ? (
+                    <video
+                      src={t.src}
+                      poster={t.poster}
+                      muted
+                      loop
+                      playsInline
+                      preload="metadata"
+                      onMouseEnter={(e) => e.currentTarget.play().catch(() => {})}
+                      onMouseLeave={(e) => { e.currentTarget.pause(); e.currentTarget.currentTime = 0; }}
+                      className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    />
+                  ) : (
+                    <img
+                      src={t.src}
+                      alt={t.title}
+                      loading="lazy"
+                      className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
+
+                  <div className="absolute top-3 left-3 flex items-center gap-2">
+                    <span className="glass px-2.5 py-1 rounded-full text-[10px] font-mono uppercase tracking-wider text-foreground/90 backdrop-blur-md">
+                      {t.category}
+                    </span>
+                  </div>
+                  <div className="absolute top-3 right-3">
+                    <span className="glass px-2 py-1 rounded-md text-[10px] font-mono text-foreground/90 backdrop-blur-md flex items-center gap-1">
+                      {t.kind === "video" ? <Play className="h-3 w-3 text-primary-glow" /> : <ImageIcon className="h-3 w-3 text-primary-glow" />}
+                      {t.duration}
+                    </span>
+                  </div>
+
+                  <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
+                    <h3 className="font-display text-xl sm:text-2xl leading-tight">{t.title}</h3>
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-[11px] font-mono text-muted-foreground">{t.model}</span>
+                      <span className="text-xs text-primary-glow flex items-center opacity-0 group-hover:opacity-100 transition">
+                        Remix <ArrowRight className="ml-1 h-3 w-3" />
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          <div className="flex justify-center mt-10 sm:mt-14">
+            <Button asChild variant="outline" size="lg" className="glass rounded-full h-12 px-6 border-border/60">
+              <Link to="/app/templates">Browse all 240+ templates <ArrowRight className="ml-2 h-4 w-4" /></Link>
+            </Button>
+          </div>
+        </div>
+      </section>
+
       {/* TESTIMONIALS */}
-      <section id="templates" className="py-20 sm:py-32">
+      <section className="py-20 sm:py-32">
         <div className="container">
           <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-16">
             <p className="text-xs uppercase tracking-widest text-gold mb-3">Loved by the best in the world</p>
