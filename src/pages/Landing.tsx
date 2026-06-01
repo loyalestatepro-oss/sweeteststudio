@@ -29,6 +29,60 @@ const features = [
   { icon: Zap, title: "Workflow automation", desc: "Templates, batch jobs, API access, Zapier & webhooks." },
 ];
 
+const templates = [
+  {
+    kind: "video" as const,
+    title: "Cinematic Product Reveal",
+    category: "Commercial",
+    duration: "0:08",
+    model: "nebula-cinematic-1080",
+    src: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
+    poster: "https://image.pollinations.ai/prompt/luxury%20product%20cinematic%20reveal%20gold%20bokeh%20studio%20light?width=800&height=450&seed=101&nologo=true",
+  },
+  {
+    kind: "video" as const,
+    title: "Fashion Editorial Loop",
+    category: "Fashion",
+    duration: "0:12",
+    model: "nebula-runway-v3",
+    src: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
+    poster: "https://image.pollinations.ai/prompt/high%20fashion%20editorial%20portrait%20holographic%20vogue%20cover%208k?width=800&height=450&seed=102&nologo=true",
+  },
+  {
+    kind: "image" as const,
+    title: "Hyperreal Portrait",
+    category: "Portrait",
+    duration: "4K",
+    model: "nebula-flux-pro",
+    src: "https://image.pollinations.ai/prompt/hyperreal%20cinematic%20portrait%20dramatic%20rim%20light%20kodak%20portra?width=900&height=1100&seed=201&nologo=true",
+  },
+  {
+    kind: "image" as const,
+    title: "Neon Tokyo Nightscape",
+    category: "Environment",
+    duration: "8K",
+    model: "nebula-vision-xl",
+    src: "https://image.pollinations.ai/prompt/neon%20tokyo%20shibuya%20rain%20night%20cinematic%20blade%20runner?width=1200&height=750&seed=202&nologo=true",
+  },
+  {
+    kind: "video" as const,
+    title: "Brand Anthem Trailer",
+    category: "Campaign",
+    duration: "0:15",
+    model: "nebula-cinematic-1080",
+    src: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+    poster: "https://image.pollinations.ai/prompt/epic%20brand%20anthem%20trailer%20mountain%20sunrise%20athlete%20silhouette?width=800&height=450&seed=103&nologo=true",
+  },
+  {
+    kind: "image" as const,
+    title: "Luxury Still Life",
+    category: "Product",
+    duration: "4K",
+    model: "nebula-flux-pro",
+    src: "https://image.pollinations.ai/prompt/luxury%20perfume%20bottle%20marble%20pedestal%20golden%20hour%20softbox?width=900&height=1100&seed=203&nologo=true",
+  },
+];
+
 const testimonials = [
   { quote: "Replaced three subscriptions and a contractor. Our campaign velocity tripled.", author: "Amelia Ngata", role: "Creative Director, Lumen Agency" },
   { quote: "The render quality is genuinely indistinguishable from our hand-edited shoots.", author: "Daichi Mori", role: "Founder, Polaris Films" },
