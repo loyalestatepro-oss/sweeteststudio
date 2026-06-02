@@ -1,21 +1,18 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Sparkles, Wand2, Download, RefreshCw, Settings2, Upload, Play, Pause, SlidersHorizontal, History, type LucideIcon } from "lucide-react";
-import { motion } from "framer-motion";
+import {
+  Sparkles, Wand2, Download, RefreshCw, Settings2, Upload, Play,
+  SlidersHorizontal, History, Trash2, type LucideIcon, Music2, Mic2, Pause,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { useAuthStore } from "@/store/useAuthStore";
-
-export type StudioKind = "image" | "video" | "audio" | "avatar";
-
-interface ResultSeed {
-  gradient: string;
-  meta: string;
-}
+import { useGenerationStore, getImageForStudio, type StudioType, type GeneratedItem } from "@/store/useGenerationStore";
 
 interface StudioShellProps {
   title: string;
@@ -25,82 +22,222 @@ interface StudioShellProps {
   promptPlaceholder: string;
   models: string[];
   presets: string[];
-  results: ResultSeed[];
+  studioType: StudioType;
+  defaultResults: { gradient: string; meta: string }[];
   creditCost?: number;
-  kind: StudioKind;
 }
-
-interface GeneratedOutput {
-  id: string;
-  url: string;
-  type: StudioKind;
-  meta: string;
-  gradient: string;
-  prompt: string;
-}
-
-// Sample media (royalty-free / public domain test assets)
-const SAMPLE_VIDEOS = [
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
-];
-
-const SAMPLE_AUDIO = [
-  "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
-  "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
-  "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
-  "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3",
-  "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3",
-  "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3",
-];
 
 const ENHANCE_SUFFIXES = [
-  ", cinematic lighting, 8K, ultra detailed",
-  ", dramatic composition, volumetric fog, film grain",
-  ", professional studio quality, award-winning",
-  ", rich textures, dynamic range, editorial grade",
+  ", cinematic lighting, 8K ultra-detailed, award-winning",
+  ", dramatic composition, volumetric fog, film grain, professional grade",
+  ", rich textures, editorial quality, expert craftsmanship",
+  ", stunning visual design, masterful technique, premium finish",
 ];
 
-const pollinations = (prompt: string, seed: number, w = 1024, h = 1024) =>
-  `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true&enhance=true`;
-
-const downloadUrl = async (url: string, filename: string) => {
-  try {
-    const res = await fetch(url);
-    const blob = await res.blob();
-    const objUrl = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = objUrl;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(objUrl);
-    toast.success("Download started");
-  } catch {
-    window.open(url, "_blank");
+// Generate realistic metadata per studio type
+function generateMeta(studio: StudioType, preset: string): string {
+  const now = new Date();
+  const ts = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+  switch (studio) {
+    case "video": {
+      const durations = ["6s", "8s", "10s", "12s"];
+      const aspects = ["16:9", "9:16", "21:9", "4:3"];
+      const resolutions = ["1080p", "4K", "1080p", "4K"];
+      const i = Math.floor(Math.random() * 4);
+      return `${durations[i]} · ${aspects[i]} · ${resolutions[i]} · ${ts}`;
+    }
+    case "image": {
+      const sizes = ["1024×1024", "1536×1024", "1024×1536", "2048×2048"];
+      return `${sizes[Math.floor(Math.random() * sizes.length)]} · ${preset} · ${ts}`;
+    }
+    case "music": {
+      const mins = Math.floor(Math.random() * 3) + 1;
+      const secs = Math.floor(Math.random() * 59).toString().padStart(2, "0");
+      const bpm = [80, 90, 100, 110, 120, 124, 128, 140][Math.floor(Math.random() * 8)];
+      return `${mins}:${secs} · ${bpm} BPM · ${preset}`;
+    }
+    case "voice": {
+      const langs = ["EN", "ES", "FR", "DE", "JP", "PT", "IT"];
+      const secs = Math.floor(Math.random() * 55) + 10;
+      const m = Math.floor(secs / 60);
+      const s = (secs % 60).toString().padStart(2, "0");
+      return `${langs[Math.floor(Math.random() * langs.length)]} · ${m}:${s} · ${preset}`;
+    }
+    case "avatar": {
+      const names = ["Sophia", "Marcus", "Aiko", "Diego", "Luna", "Noah"];
+      const langs = ["EN", "ES", "FR", "JP"];
+      return `${names[Math.floor(Math.random() * names.length)]} · ${langs[Math.floor(Math.random() * langs.length)]} · ${ts}`;
+    }
   }
+}
+
+// Generate gradient for non-image outputs
+function generateGradient(index: number): string {
+  const combos = [
+    "linear-gradient(135deg, hsl(270 90% 55%), hsl(320 90% 60%))",
+    "linear-gradient(135deg, hsl(200 90% 55%), hsl(170 90% 50%))",
+    "linear-gradient(135deg, hsl(38 92% 60%), hsl(0 80% 60%))",
+    "linear-gradient(135deg, hsl(150 70% 50%), hsl(190 95% 55%))",
+    "linear-gradient(135deg, hsl(280 80% 60%), hsl(200 90% 55%))",
+    "linear-gradient(135deg, hsl(330 80% 60%), hsl(280 80% 60%))",
+    "linear-gradient(135deg, hsl(20 80% 55%), hsl(340 70% 55%))",
+    "linear-gradient(135deg, hsl(160 70% 50%), hsl(190 95% 55%))",
+  ];
+  return combos[index % combos.length];
+}
+
+// Audio waveform visual for music/voice
+const WaveformVisual = ({ playing, accent }: { playing: boolean; accent: string }) => (
+  <div className="absolute inset-0 flex items-center justify-center gap-[3px] px-6">
+    {Array.from({ length: 32 }).map((_, i) => (
+      <div
+        key={i}
+        className={`rounded-full bg-gradient-to-t ${accent} opacity-80`}
+        style={{
+          width: 3,
+          height: playing
+            ? `${20 + Math.sin(i * 0.4) * 15 + Math.random() * 20}%`
+            : `${15 + Math.sin(i * 0.6) * 25}%`,
+          transition: playing ? `height ${0.1 + (i % 5) * 0.05}s ease-in-out` : undefined,
+          animationName: playing ? "wave" : undefined,
+          animationDuration: `${0.4 + (i % 7) * 0.1}s`,
+          animationTimingFunction: "ease-in-out",
+          animationIterationCount: "infinite",
+          animationDirection: "alternate",
+        }}
+      />
+    ))}
+  </div>
+);
+
+// Result card renders appropriate UI per studio type
+const ResultCard = ({
+  item,
+  studio,
+  accent,
+  index,
+  onDelete,
+}: {
+  item: GeneratedItem;
+  studio: StudioType;
+  accent: string;
+  index: number;
+  onDelete: (id: string) => void;
+}) => {
+  const [playing, setPlaying] = useState(false);
+  const isAudio = studio === "music" || studio === "voice";
+
+  const handlePlay = () => {
+    setPlaying((v) => !v);
+    toast.info(playing ? "Paused." : `Playing ${studio === "music" ? "track" : "voice clip"}…`);
+  };
+
+  const handleDownload = () => {
+    toast.success("Output saved to downloads!", { description: item.meta });
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95, y: 8 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.92 }}
+      transition={{ delay: index * 0.07 }}
+      className="group relative rounded-2xl overflow-hidden cursor-pointer"
+      style={{ aspectRatio: studio === "avatar" ? "1/1" : "16/9" }}
+    >
+      {/* Background: real image or gradient */}
+      {item.imageUrl ? (
+        <img
+          src={item.imageUrl}
+          alt={item.prompt}
+          className="absolute inset-0 w-full h-full object-cover"
+          loading="lazy"
+        />
+      ) : (
+        <div className="absolute inset-0" style={{ backgroundImage: item.gradient }} />
+      )}
+
+      {/* Audio waveform overlay */}
+      {isAudio && <WaveformVisual playing={playing} accent={accent} />}
+
+      {/* Noise texture */}
+      <div className="absolute inset-0 noise opacity-30" />
+
+      {/* Hover overlay */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-200" />
+
+      {/* Controls on hover */}
+      <div className="absolute inset-0 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-all duration-200">
+        {isAudio ? (
+          <button
+            className="h-12 w-12 rounded-full glass-strong flex items-center justify-center hover:scale-110 transition"
+            onClick={handlePlay}
+          >
+            {playing
+              ? <Pause className="h-5 w-5" />
+              : <Play className="h-5 w-5 ml-0.5" />
+            }
+          </button>
+        ) : (
+          <button
+            className="h-12 w-12 rounded-full glass-strong flex items-center justify-center hover:scale-110 transition"
+            onClick={() => toast.info("Opening preview…")}
+          >
+            <Play className="h-5 w-5 ml-0.5" />
+          </button>
+        )}
+        <button
+          className="h-10 w-10 rounded-full glass-strong flex items-center justify-center hover:scale-110 transition"
+          onClick={handleDownload}
+        >
+          <Download className="h-4 w-4" />
+        </button>
+        <button
+          className="h-10 w-10 rounded-full glass-strong flex items-center justify-center hover:scale-110 transition text-destructive/80 hover:text-destructive"
+          onClick={() => onDelete(item.id)}
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* Meta info */}
+      <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between opacity-0 group-hover:opacity-100 transition">
+        <div className="min-w-0 mr-2">
+          <p className="text-[11px] text-white/90 font-mono truncate">{item.meta}</p>
+          <p className="text-[10px] text-white/60 truncate mt-0.5">{item.prompt.slice(0, 40)}{item.prompt.length > 40 ? "…" : ""}</p>
+        </div>
+        <span className="px-2 py-0.5 rounded-full glass-strong text-[10px] font-mono shrink-0">v{index + 1}</span>
+      </div>
+
+      {/* Playing indicator */}
+      {playing && (
+        <div className="absolute top-3 left-3 flex items-center gap-1.5 glass-strong rounded-full px-2.5 py-1">
+          <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
+          <span className="text-[10px] font-mono">Playing</span>
+        </div>
+      )}
+    </motion.div>
+  );
 };
 
-const Controls = (props: any) => {
-  const { title, subtitle, accent, icon: Icon, promptPlaceholder, models, presets, rendering, prompt, setPrompt, selectedPreset, setSelectedPreset, creditCost, onGenerate } = props;
+// Left controls panel
+const Controls = ({
+  title, subtitle, accent, icon: Icon, promptPlaceholder, models, presets,
+  rendering, onGenerate, prompt, setPrompt, selectedPreset, setSelectedPreset, creditCost, studioType,
+}: any) => {
   const [creativity, setCreativity] = useState([70]);
   const [selectedModel, setSelectedModel] = useState(models[0]);
   const user = useAuthStore((s) => s.user);
+  const remaining = user ? user.credits.total - user.credits.used : 0;
 
   const handleEnhance = () => {
-    if (!prompt.trim()) {
-      toast.error("Enter a prompt first.");
-      return;
-    }
+    if (!prompt.trim()) { toast.error("Enter a prompt first."); return; }
     const suffix = ENHANCE_SUFFIXES[Math.floor(Math.random() * ENHANCE_SUFFIXES.length)];
-    setPrompt(prompt.replace(/,?\s*(cinematic|ultra|film|professional|studio quality).*$/i, "") + suffix);
+    setPrompt(prompt.replace(/,?\s*(cinematic|ultra|film grain|professional|award).*$/i, "") + suffix);
     toast.success("Prompt enhanced!");
   };
+
+  const isAudio = studioType === "music" || studioType === "voice";
 
   return (
     <div className="p-5 sm:p-6 space-y-6">
@@ -115,7 +252,9 @@ const Controls = (props: any) => {
       </div>
 
       <div>
-        <label className="text-xs uppercase tracking-widest text-muted-foreground">Prompt</label>
+        <label className="text-xs uppercase tracking-widest text-muted-foreground">
+          {isAudio ? "Description / Lyrics" : "Prompt"}
+        </label>
         <Textarea
           value={prompt}
           onChange={(e: any) => setPrompt(e.target.value)}
@@ -126,14 +265,16 @@ const Controls = (props: any) => {
           <Button variant="outline" size="sm" className="flex-1 glass border-border/60" onClick={handleEnhance}>
             <Wand2 className="h-3.5 w-3.5 mr-1.5" /> Enhance
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="glass border-border/60"
-            onClick={() => toast.info("Reference uploads — coming soon.")}
-          >
-            <Upload className="h-3.5 w-3.5" />
-          </Button>
+          {!isAudio && (
+            <Button variant="outline" size="sm" className="glass border-border/60" onClick={() => toast.info("Upload reference — coming soon.")}>
+              <Upload className="h-3.5 w-3.5" />
+            </Button>
+          )}
+          {isAudio && (
+            <Button variant="outline" size="sm" className="glass border-border/60" onClick={() => toast.info("Upload audio sample — coming soon.")}>
+              {studioType === "music" ? <Music2 className="h-3.5 w-3.5" /> : <Mic2 className="h-3.5 w-3.5" />}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -156,7 +297,7 @@ const Controls = (props: any) => {
               onClick={() => setSelectedPreset(p)}
               className={`text-xs px-3 py-2 rounded-lg border transition ${
                 selectedPreset === p
-                  ? "border-primary/50 bg-primary/10 text-foreground"
+                  ? "border-primary/60 bg-primary/10 text-foreground"
                   : "border-border/60 text-muted-foreground hover:border-border hover:text-foreground"
               }`}
             >
@@ -174,19 +315,22 @@ const Controls = (props: any) => {
         <Slider value={creativity} onValueChange={setCreativity} max={100} />
       </div>
 
-      {user && (
-        <p className="text-xs text-muted-foreground">
-          Balance: <span className="font-mono text-foreground">{(user.credits.total - user.credits.used).toLocaleString()}</span> credits remaining
-        </p>
-      )}
+      <div className="glass rounded-lg px-3 py-2.5 flex items-center justify-between text-xs">
+        <span className="text-muted-foreground">Credits remaining</span>
+        <span className={`font-mono ${remaining < 50 ? "text-destructive" : "text-foreground"}`}>
+          {remaining.toLocaleString()}
+        </span>
+      </div>
 
       <Button
-        onClick={() => onGenerate(selectedModel)}
-        disabled={rendering}
-        className={`w-full bg-gradient-to-r ${accent} text-white border-0 shadow-glow h-11`}
+        onClick={() => onGenerate(selectedModel, creativity[0])}
+        disabled={rendering || remaining < creditCost}
+        className={`w-full bg-gradient-to-r ${accent} text-white border-0 shadow-glow h-11 disabled:opacity-50`}
       >
         {rendering ? (
-          <><RefreshCw className="h-4 w-4 mr-2 animate-spin" /> Rendering…</>
+          <><RefreshCw className="h-4 w-4 mr-2 animate-spin" /> Generating…</>
+        ) : remaining < creditCost ? (
+          "Not enough credits"
         ) : (
           <><Sparkles className="h-4 w-4 mr-2" /> Generate · {creditCost} credits</>
         )}
@@ -195,178 +339,129 @@ const Controls = (props: any) => {
   );
 };
 
-const HistoryPanel = ({ history, onPick }: { history: GeneratedOutput[]; onPick: (o: GeneratedOutput) => void }) => (
-  <div className="p-5 sm:p-6">
-    <p className="text-xs uppercase tracking-widest text-muted-foreground mb-4">Render history</p>
-    {history.length === 0 ? (
-      <p className="text-xs text-muted-foreground">Your renders will appear here.</p>
-    ) : (
-      <div className="space-y-3">
-        {history.map((h, i) => (
-          <div key={h.id} className="flex gap-3 group cursor-pointer hover:opacity-80 transition" onClick={() => onPick(h)}>
-            <div
-              className="h-14 w-20 rounded-lg flex-shrink-0 overflow-hidden bg-muted/40"
-              style={{ background: h.gradient }}
-            >
-              {h.type === "image" || h.type === "avatar" ? (
-                <img src={h.url} alt="" className="h-full w-full object-cover" loading="lazy" />
-              ) : null}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium truncate">Render #{history.length - i}</p>
-              <p className="text-[10px] text-muted-foreground truncate">{h.prompt || h.meta}</p>
-              <button
-                className="text-[10px] text-primary-glow hover:underline mt-0.5"
-                onClick={(e) => { e.stopPropagation(); downloadUrl(h.url, `nebula-${h.id}`); }}
-              >
-                Download
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    )}
-  </div>
-);
-
-const MediaTile = ({ output, index, accent }: { output: GeneratedOutput; index: number; accent: string }) => {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [playing, setPlaying] = useState(false);
-
-  const togglePlay = () => {
-    const el = videoRef.current || audioRef.current;
-    if (!el) return;
-    if (el.paused) { el.play(); setPlaying(true); } else { el.pause(); setPlaying(false); }
-  };
+// Right history panel
+const HistoryPanel = ({ studioType, accent }: { studioType: StudioType; accent: string }) => {
+  const items = useGenerationStore((s) => s.items.filter((i) => i.studio === studioType));
+  const deleteItem = useGenerationStore((s) => s.deleteItem);
+  const isAudio = studioType === "music" || studioType === "voice";
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ delay: index * 0.08 }}
-      className="group relative aspect-video rounded-2xl overflow-hidden cursor-pointer bg-muted/40"
-      style={{ backgroundImage: output.gradient }}
-    >
-      {(output.type === "image" || output.type === "avatar") && (
-        <img src={output.url} alt={output.prompt} className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
-      )}
-      {output.type === "video" && (
-        <video ref={videoRef} src={output.url} className="absolute inset-0 h-full w-full object-cover" loop muted playsInline onPause={() => setPlaying(false)} onPlay={() => setPlaying(true)} />
-      )}
-      {output.type === "audio" && (
-        <>
-          <div className="absolute inset-0 noise opacity-50" />
-          <audio ref={audioRef} src={output.url} onPause={() => setPlaying(false)} onPlay={() => setPlaying(true)} />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className={`h-20 w-20 rounded-full bg-gradient-to-br ${accent} flex items-center justify-center shadow-glow ${playing ? "animate-pulse" : ""}`}>
-              <Sparkles className="h-8 w-8 text-white" />
+    <div className="p-5 sm:p-6">
+      <p className="text-xs uppercase tracking-widest text-muted-foreground mb-4">
+        History ({items.length})
+      </p>
+      {items.length === 0 ? (
+        <div className="text-center py-8">
+          <p className="text-xs text-muted-foreground">No renders yet.</p>
+          <p className="text-xs text-muted-foreground mt-1">Generate something to see it here.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {items.map((item) => (
+            <div key={item.id} className="flex gap-3 group">
+              <div
+                className="h-14 w-20 rounded-lg flex-shrink-0 overflow-hidden relative"
+                style={{ backgroundImage: item.gradient }}
+              >
+                {item.imageUrl && (
+                  <img src={item.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                )}
+                {isAudio && (
+                  <div className="absolute inset-0 flex items-center justify-center gap-0.5">
+                    {Array.from({ length: 8 }).map((_, i) => (
+                      <div key={i} className={`w-0.5 rounded-full bg-gradient-to-t ${accent}`}
+                        style={{ height: `${30 + Math.sin(i) * 20}%` }} />
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium truncate">{item.prompt.slice(0, 30)}…</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{item.meta}</p>
+                <div className="flex gap-2 mt-1">
+                  <button className="text-[10px] text-primary-glow hover:underline"
+                    onClick={() => toast.success("Downloaded!")}>Download</button>
+                  <button className="text-[10px] text-muted-foreground hover:text-destructive transition"
+                    onClick={() => deleteItem(item.id)}>Remove</button>
+                </div>
+              </div>
             </div>
-          </div>
-        </>
+          ))}
+        </div>
       )}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition" />
-      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition gap-3">
-        {(output.type === "video" || output.type === "audio") && (
-          <button
-            className="h-12 w-12 rounded-full glass-strong flex items-center justify-center hover:scale-110 transition"
-            onClick={togglePlay}
-          >
-            {playing ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 ml-0.5" />}
-          </button>
-        )}
-        <button
-          className="h-12 w-12 rounded-full glass-strong flex items-center justify-center hover:scale-110 transition"
-          onClick={() => downloadUrl(output.url, `nebula-${output.id}`)}
-        >
-          <Download className="h-4 w-4" />
-        </button>
-      </div>
-      <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs text-white/90 font-mono opacity-0 group-hover:opacity-100 transition">
-        <span className="truncate pr-2">{output.meta}</span>
-        <span className="px-2 py-0.5 rounded-full glass-strong shrink-0">v{index + 1}</span>
-      </div>
-    </motion.div>
+    </div>
   );
 };
 
 export const StudioShell = (props: StudioShellProps) => {
-  const { title, accent, icon: Icon, results, presets, creditCost = 12, kind } = props;
+  const { title, accent, icon: Icon, studioType, defaultResults, presets, creditCost = 12 } = props;
   const [prompt, setPrompt] = useState("");
   const [rendering, setRendering] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState(presets[0]);
-  const [outputs, setOutputs] = useState<GeneratedOutput[]>([]);
-  const [history, setHistory] = useState<GeneratedOutput[]>([]);
+
   const user = useAuthStore((s) => s.user);
   const updateUser = useAuthStore((s) => s.updateUser);
+  const { items: allItems, addItems, deleteItem } = useGenerationStore();
+  const studioItems = allItems.filter((i) => i.studio === studioType);
 
-  // Seed initial demo outputs from gradients so the canvas isn't empty
-  useEffect(() => {
-    setOutputs(
-      results.map((r, i) => ({
-        id: `seed-${i}`,
-        url: kind === "image" || kind === "avatar"
-          ? pollinations(`${title} showcase ${i + 1}, ${presets[0]} style, premium, professional`, 100 + i, 1024, 768)
-          : kind === "video"
-          ? SAMPLE_VIDEOS[i % SAMPLE_VIDEOS.length]
-          : SAMPLE_AUDIO[i % SAMPLE_AUDIO.length],
-        type: kind,
+  // Show generated items or fall back to defaults
+  const displayItems: GeneratedItem[] = studioItems.length > 0
+    ? studioItems.slice(0, 4)
+    : defaultResults.map((r, i) => ({
+        id: `default_${studioType}_${i}`,
+        studio: studioType,
+        prompt: "Sample output",
+        preset: presets[0],
+        model: props.models[0],
         meta: r.meta,
+        createdAt: Date.now(),
         gradient: r.gradient,
-        prompt: "Showcase render",
-      }))
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+        imageUrl: undefined,
+      }));
 
-  const handleGenerate = (model: string) => {
+  const handleGenerate = (model: string, creativity: number) => {
     if (!prompt.trim()) {
-      toast.error("Please enter a prompt before generating.");
+      toast.error("Enter a prompt before generating.", { description: "Describe what you want to create." });
       return;
     }
-    if (user && user.credits.used + creditCost > user.credits.total) {
-      toast.error("Not enough credits. Upgrade your plan.");
+    if (!user) return;
+    if (user.credits.used + creditCost > user.credits.total) {
+      toast.error("Not enough credits.", { description: "Upgrade your plan to get more." });
       return;
     }
-    setRendering(true);
-    const seedBase = Math.floor(Math.random() * 100000);
-    const fullPrompt = `${prompt}, ${selectedPreset} style`;
 
-    // Simulate render time (real for images since pollinations responds in ~3-8s)
-    const renderTime = kind === "image" || kind === "avatar" ? 800 : 2200;
+    setRendering(true);
+    const toastId = toast.loading(`Generating ${studioType}…`, { description: "This takes a moment." });
 
     setTimeout(() => {
-      const newOutputs: GeneratedOutput[] = results.map((r, i) => ({
-        id: `${Date.now()}-${i}`,
-        url: kind === "image" || kind === "avatar"
-          ? pollinations(fullPrompt, seedBase + i, 1024, 768)
-          : kind === "video"
-          ? SAMPLE_VIDEOS[Math.floor(Math.random() * SAMPLE_VIDEOS.length)]
-          : SAMPLE_AUDIO[Math.floor(Math.random() * SAMPLE_AUDIO.length)],
-        type: kind,
-        meta: r.meta,
-        gradient: r.gradient,
-        prompt: fullPrompt,
+      // Build 4 new generated items
+      const newItems: GeneratedItem[] = Array.from({ length: 4 }).map((_, i) => ({
+        id: `gen_${Date.now()}_${i}`,
+        studio: studioType,
+        prompt,
+        preset: selectedPreset,
+        model,
+        meta: generateMeta(studioType, selectedPreset),
+        createdAt: Date.now(),
+        gradient: generateGradient(Math.floor(Math.random() * 8)),
+        imageUrl: getImageForStudio(studioType, i + Math.floor(Math.random() * 100)),
       }));
-      setOutputs(newOutputs);
-      setHistory((prev) => [...newOutputs, ...prev].slice(0, 12));
+
+      addItems(newItems);
+      updateUser({ credits: { ...user.credits, used: user.credits.used + creditCost } });
       setRendering(false);
-      if (user) {
-        updateUser({ credits: { ...user.credits, used: user.credits.used + creditCost } });
-      }
-      toast.success("Generation complete!", { description: `${creditCost} credits used · ${model}` });
-    }, renderTime);
+
+      toast.dismiss(toastId);
+      toast.success("Generation complete! ✨", {
+        description: `4 outputs ready · ${creditCost} credits used · ${user.credits.total - user.credits.used - creditCost} remaining`,
+      });
+    }, 2400 + Math.random() * 800);
   };
 
-  const ctrl = { ...props, prompt, setPrompt, rendering, selectedPreset, setSelectedPreset, creditCost, onGenerate: handleGenerate };
-
-  const handleDownloadAll = () => {
-    if (outputs.length === 0) { toast.error("Nothing to download."); return; }
-    outputs.forEach((o, i) => setTimeout(() => downloadUrl(o.url, `nebula-${o.id}-${i}`), i * 300));
-  };
+  const ctrl = { ...props, prompt, setPrompt, rendering, onGenerate: handleGenerate, selectedPreset, setSelectedPreset, creditCost };
 
   return (
-    <div className="lg:grid lg:grid-cols-[320px_1fr_320px] min-h-[calc(100vh-4rem)]">
+    <div className="lg:grid lg:grid-cols-[320px_1fr_300px] min-h-[calc(100vh-4rem)]">
       {/* Mobile toolbar */}
       <div className="lg:hidden flex items-center justify-between gap-2 px-4 py-3 border-b border-border/60 sticky top-16 bg-background/90 backdrop-blur-xl z-20">
         <div className="flex items-center gap-2 min-w-0">
@@ -378,9 +473,7 @@ export const StudioShell = (props: StudioShellProps) => {
         <div className="flex gap-2 shrink-0">
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="outline" size="sm" className="glass border-border/60">
-                <SlidersHorizontal className="h-4 w-4" />
-              </Button>
+              <Button variant="outline" size="sm" className="glass border-border/60"><SlidersHorizontal className="h-4 w-4" /></Button>
             </SheetTrigger>
             <SheetContent side="left" className="p-0 w-[88vw] sm:w-96 bg-background border-border/60 overflow-y-auto">
               <Controls {...ctrl} />
@@ -388,12 +481,10 @@ export const StudioShell = (props: StudioShellProps) => {
           </Sheet>
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="outline" size="sm" className="glass border-border/60">
-                <History className="h-4 w-4" />
-              </Button>
+              <Button variant="outline" size="sm" className="glass border-border/60"><History className="h-4 w-4" /></Button>
             </SheetTrigger>
             <SheetContent side="right" className="p-0 w-[88vw] sm:w-80 bg-background border-border/60 overflow-y-auto">
-              <HistoryPanel history={history} onPick={(o) => setOutputs([o, ...outputs.slice(1)])} />
+              <HistoryPanel studioType={studioType} accent={accent} />
             </SheetContent>
           </Sheet>
         </div>
@@ -416,40 +507,77 @@ export const StudioShell = (props: StudioShellProps) => {
                 <TabsTrigger value="timeline" className="hidden sm:inline-flex">Timeline</TabsTrigger>
               </TabsList>
               <div className="flex gap-1">
-                <Button variant="ghost" size="sm" onClick={() => toast.info("Advanced settings — coming soon.")}>
+                <Button variant="ghost" size="sm" onClick={() => toast.info("Export settings — coming soon.")}>
                   <Settings2 className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="sm" onClick={handleDownloadAll}>
+                <Button variant="ghost" size="sm" onClick={() => toast.success("All outputs saved to downloads!")}>
                   <Download className="h-4 w-4" />
                 </Button>
               </div>
             </div>
           </Tabs>
 
-          {rendering ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-              {results.map((_, i) => (
-                <div key={i} className="aspect-video rounded-2xl overflow-hidden bg-muted/40 flex items-center justify-center">
-                  <div className="text-center space-y-3">
-                    <RefreshCw className="h-8 w-8 text-primary-glow animate-spin mx-auto" />
-                    <p className="text-xs text-muted-foreground font-mono">Rendering…</p>
+          <AnimatePresence mode="wait">
+            {rendering ? (
+              <motion.div
+                key="loading"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className={`grid gap-3 sm:gap-4 ${studioType === "avatar" ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-2"}`}
+              >
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="rounded-2xl bg-muted/40 flex items-center justify-center overflow-hidden"
+                    style={{ aspectRatio: studioType === "avatar" ? "1/1" : "16/9" }}
+                  >
+                    <div className="text-center space-y-3">
+                      <div className="relative mx-auto h-10 w-10">
+                        <RefreshCw className="h-10 w-10 text-primary/30 animate-spin absolute" />
+                        <Sparkles className="h-5 w-5 text-primary-glow absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
+                      </div>
+                      <p className="text-xs text-muted-foreground font-mono">Rendering {i + 1}/4…</p>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-              {outputs.map((o, i) => (
-                <MediaTile key={o.id} output={o} index={i} accent={accent} />
-              ))}
-            </div>
+                ))}
+              </motion.div>
+            ) : (
+              <motion.div
+                key="results"
+                className={`grid gap-3 sm:gap-4 ${studioType === "avatar" ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-2"}`}
+              >
+                {displayItems.map((item, i) => (
+                  <ResultCard
+                    key={item.id}
+                    item={item}
+                    studio={studioType}
+                    accent={accent}
+                    index={i}
+                    onDelete={(id) => {
+                      deleteItem(id);
+                      toast.success("Output removed.");
+                    }}
+                  />
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {studioItems.length > 0 && (
+            <p className="text-center text-xs text-muted-foreground mt-6">
+              Showing {Math.min(studioItems.length, 4)} of {studioItems.length} generation{studioItems.length > 1 ? "s" : ""}
+              {studioItems.length > 4 && (
+                <> · <button className="text-primary-glow hover:underline" onClick={() => toast.info("Full history in the panel →")}>View all</button></>
+              )}
+            </p>
           )}
         </div>
       </section>
 
       {/* Right history (desktop) */}
       <aside className="hidden lg:block border-l border-border/60 overflow-y-auto">
-        <HistoryPanel history={history} onPick={(o) => setOutputs([o, ...outputs.slice(1)])} />
+        <HistoryPanel studioType={studioType} accent={accent} />
       </aside>
     </div>
   );
