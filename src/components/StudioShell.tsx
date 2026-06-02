@@ -456,14 +456,72 @@ export const StudioShell = (props: StudioShellProps) => {
     }
 
     setRendering(true);
+    setProgress({ step: 0, total: 5, label: "Starting…" });
+    setLiveFrames([]);
     const toastId = toast.loading(`Generating ${studioType}…`, { description: "This takes a moment." });
-    const useRealAI = studioType === "image" || studioType === "avatar";
-    const count = 4;
+    const useRealImage = studioType === "image" || studioType === "avatar";
+    const isVideo = studioType === "video";
+    const count = isVideo ? 1 : 4;
 
     try {
       let imageUrls: (string | undefined)[] = [];
+      let videoFrames: string[] = [];
 
-      if (useRealAI) {
+      if (isVideo) {
+        // Stream from generate-video edge function (SSE)
+        const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+        const ANON = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+        const resp = await fetch(`${SUPABASE_URL}/functions/v1/generate-video`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: ANON,
+            Authorization: `Bearer ${ANON}`,
+          },
+          body: JSON.stringify({ prompt, aspectRatio: "16:9" }),
+        });
+        if (!resp.ok || !resp.body) {
+          throw new Error(`Stream failed (${resp.status})`);
+        }
+
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let streamError: string | null = null;
+
+        // Parse SSE events from the stream
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const events = buffer.split("\n\n");
+          buffer = events.pop() ?? "";
+          for (const ev of events) {
+            const lines = ev.split("\n");
+            let eventName = "message";
+            let dataStr = "";
+            for (const line of lines) {
+              if (line.startsWith("event:")) eventName = line.slice(6).trim();
+              else if (line.startsWith("data:")) dataStr += line.slice(5).trim();
+            }
+            if (!dataStr) continue;
+            let payload: any;
+            try { payload = JSON.parse(dataStr); } catch { continue; }
+
+            if (eventName === "stage") {
+              setProgress({ step: payload.step, total: payload.total, label: payload.label });
+            } else if (eventName === "frame") {
+              videoFrames.push(payload.url);
+              setLiveFrames([...videoFrames]);
+            } else if (eventName === "done") {
+              if (Array.isArray(payload.frames)) videoFrames = payload.frames;
+            } else if (eventName === "error") {
+              streamError = payload.message || "Stream error";
+            }
+          }
+        }
+        if (videoFrames.length === 0) throw new Error(streamError || "No video frames generated");
+      } else if (useRealImage) {
         const aspectRatio = studioType === "avatar" ? "1:1" : "16:9";
         const { data, error } = await supabase.functions.invoke("generate-image", {
           body: { prompt, count, aspectRatio },
@@ -472,31 +530,47 @@ export const StudioShell = (props: StudioShellProps) => {
         if (!data?.images?.length) throw new Error("No images returned");
         imageUrls = data.images;
       } else {
-        // Simulated delay for non-image studios (video/music/voice previews)
+        // Simulated delay for music/voice previews
         await new Promise((r) => setTimeout(r, 2200 + Math.random() * 600));
         imageUrls = Array.from({ length: count }).map((_, i) =>
           getImageForStudio(studioType, i + Math.floor(Math.random() * 100))
         );
       }
 
-      const newItems: GeneratedItem[] = imageUrls.map((url, i) => ({
-        id: `gen_${Date.now()}_${i}`,
-        studio: studioType,
-        prompt,
-        preset: selectedPreset,
-        model,
-        meta: generateMeta(studioType, selectedPreset),
-        createdAt: Date.now(),
-        gradient: generateGradient(Math.floor(Math.random() * 8)),
-        imageUrl: url,
-      }));
+      let newItems: GeneratedItem[];
+      if (isVideo) {
+        newItems = [{
+          id: `gen_${Date.now()}`,
+          studio: studioType,
+          prompt,
+          preset: selectedPreset,
+          model,
+          meta: generateMeta(studioType, selectedPreset),
+          createdAt: Date.now(),
+          gradient: generateGradient(Math.floor(Math.random() * 8)),
+          imageUrl: videoFrames[0],
+          frames: videoFrames,
+        }];
+      } else {
+        newItems = imageUrls.map((url, i) => ({
+          id: `gen_${Date.now()}_${i}`,
+          studio: studioType,
+          prompt,
+          preset: selectedPreset,
+          model,
+          meta: generateMeta(studioType, selectedPreset),
+          createdAt: Date.now(),
+          gradient: generateGradient(Math.floor(Math.random() * 8)),
+          imageUrl: url,
+        }));
+      }
 
       addItems(newItems);
       updateUser({ credits: { ...user.credits, used: user.credits.used + creditCost } });
 
       toast.dismiss(toastId);
       toast.success("Generation complete! ✨", {
-        description: `${newItems.length} outputs ready · ${creditCost} credits used`,
+        description: `${newItems.length} output${newItems.length > 1 ? "s" : ""} ready · ${creditCost} credits used`,
       });
     } catch (err: any) {
       toast.dismiss(toastId);
@@ -510,6 +584,8 @@ export const StudioShell = (props: StudioShellProps) => {
       }
     } finally {
       setRendering(false);
+      setProgress(null);
+      setLiveFrames([]);
     }
   };
 
