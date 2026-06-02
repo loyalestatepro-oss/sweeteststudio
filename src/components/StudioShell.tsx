@@ -165,8 +165,10 @@ const ResultCard = ({
       className="group relative rounded-2xl overflow-hidden cursor-pointer"
       style={{ aspectRatio: studio === "avatar" ? "1/1" : "16/9" }}
     >
-      {/* Background: real image or gradient */}
-      {item.imageUrl ? (
+      {/* Background: animated keyframes (video), real image, or gradient */}
+      {studio === "video" && item.frames && item.frames.length > 0 ? (
+        <VideoPreview frames={item.frames} />
+      ) : item.imageUrl ? (
         <img
           src={item.imageUrl}
           alt={item.prompt}
