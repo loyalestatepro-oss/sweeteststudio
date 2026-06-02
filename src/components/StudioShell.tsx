@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useGenerationStore, getImageForStudio, type StudioType, type GeneratedItem } from "@/store/useGenerationStore";
+import { supabase } from "@/integrations/supabase/client";
 
 interface StudioShellProps {
   title: string;
