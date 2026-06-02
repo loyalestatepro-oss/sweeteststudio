@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useGenerationStore, getImageForStudio, type StudioType, type GeneratedItem } from "@/store/useGenerationStore";
 import { supabase } from "@/integrations/supabase/client";
+import { VideoPreview } from "@/components/VideoPreview";
 
 interface StudioShellProps {
   title: string;
