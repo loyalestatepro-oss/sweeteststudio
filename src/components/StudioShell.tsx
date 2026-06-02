@@ -133,8 +133,26 @@ const ResultCard = ({
     toast.info(playing ? "Paused." : `Playing ${studio === "music" ? "track" : "voice clip"}…`);
   };
 
-  const handleDownload = () => {
-    toast.success("Output saved to downloads!", { description: item.meta });
+  const handleDownload = async () => {
+    if (!item.imageUrl) {
+      toast.info("Preview only — generate to download.");
+      return;
+    }
+    try {
+      const res = await fetch(item.imageUrl);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${studio}-${item.id}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success("Downloaded!", { description: item.meta });
+    } catch {
+      toast.error("Download failed.");
+    }
   };
 
   return (
