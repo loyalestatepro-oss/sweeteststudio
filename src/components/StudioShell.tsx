@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useGenerationStore, getImageForStudio, type StudioType, type GeneratedItem } from "@/store/useGenerationStore";
+import { supabase } from "@/integrations/supabase/client";
 
 interface StudioShellProps {
   title: string;
@@ -132,8 +133,26 @@ const ResultCard = ({
     toast.info(playing ? "Paused." : `Playing ${studio === "music" ? "track" : "voice clip"}…`);
   };
 
-  const handleDownload = () => {
-    toast.success("Output saved to downloads!", { description: item.meta });
+  const handleDownload = async () => {
+    if (!item.imageUrl) {
+      toast.info("Preview only — generate to download.");
+      return;
+    }
+    try {
+      const res = await fetch(item.imageUrl);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${studio}-${item.id}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success("Downloaded!", { description: item.meta });
+    } catch {
+      toast.error("Download failed.");
+    }
   };
 
   return (
@@ -419,7 +438,7 @@ export const StudioShell = (props: StudioShellProps) => {
         imageUrl: undefined,
       }));
 
-  const handleGenerate = (model: string, creativity: number) => {
+  const handleGenerate = async (model: string, _creativity: number) => {
     if (!prompt.trim()) {
       toast.error("Enter a prompt before generating.", { description: "Describe what you want to create." });
       return;
@@ -432,10 +451,29 @@ export const StudioShell = (props: StudioShellProps) => {
 
     setRendering(true);
     const toastId = toast.loading(`Generating ${studioType}…`, { description: "This takes a moment." });
+    const useRealAI = studioType === "image" || studioType === "avatar";
+    const count = 4;
 
-    setTimeout(() => {
-      // Build 4 new generated items
-      const newItems: GeneratedItem[] = Array.from({ length: 4 }).map((_, i) => ({
+    try {
+      let imageUrls: (string | undefined)[] = [];
+
+      if (useRealAI) {
+        const aspectRatio = studioType === "avatar" ? "1:1" : "16:9";
+        const { data, error } = await supabase.functions.invoke("generate-image", {
+          body: { prompt, count, aspectRatio },
+        });
+        if (error) throw new Error(error.message || "Generation failed");
+        if (!data?.images?.length) throw new Error("No images returned");
+        imageUrls = data.images;
+      } else {
+        // Simulated delay for non-image studios (video/music/voice previews)
+        await new Promise((r) => setTimeout(r, 2200 + Math.random() * 600));
+        imageUrls = Array.from({ length: count }).map((_, i) =>
+          getImageForStudio(studioType, i + Math.floor(Math.random() * 100))
+        );
+      }
+
+      const newItems: GeneratedItem[] = imageUrls.map((url, i) => ({
         id: `gen_${Date.now()}_${i}`,
         studio: studioType,
         prompt,
@@ -444,18 +482,29 @@ export const StudioShell = (props: StudioShellProps) => {
         meta: generateMeta(studioType, selectedPreset),
         createdAt: Date.now(),
         gradient: generateGradient(Math.floor(Math.random() * 8)),
-        imageUrl: getImageForStudio(studioType, i + Math.floor(Math.random() * 100)),
+        imageUrl: url,
       }));
 
       addItems(newItems);
       updateUser({ credits: { ...user.credits, used: user.credits.used + creditCost } });
-      setRendering(false);
 
       toast.dismiss(toastId);
       toast.success("Generation complete! ✨", {
-        description: `4 outputs ready · ${creditCost} credits used · ${user.credits.total - user.credits.used - creditCost} remaining`,
+        description: `${newItems.length} outputs ready · ${creditCost} credits used`,
       });
-    }, 2400 + Math.random() * 800);
+    } catch (err: any) {
+      toast.dismiss(toastId);
+      const msg = String(err?.message || err);
+      if (msg.includes("429")) {
+        toast.error("Rate limit reached.", { description: "Please wait a moment and try again." });
+      } else if (msg.includes("402")) {
+        toast.error("AI credits exhausted.", { description: "Add credits in workspace settings." });
+      } else {
+        toast.error("Generation failed.", { description: msg.slice(0, 140) });
+      }
+    } finally {
+      setRendering(false);
+    }
   };
 
   const ctrl = { ...props, prompt, setPrompt, rendering, onGenerate: handleGenerate, selectedPreset, setSelectedPreset, creditCost };
