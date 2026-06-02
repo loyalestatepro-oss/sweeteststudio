@@ -420,6 +420,9 @@ export const StudioShell = (props: StudioShellProps) => {
   const [prompt, setPrompt] = useState("");
   const [rendering, setRendering] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState(presets[0]);
+  // Video streaming progress
+  const [progress, setProgress] = useState<{ step: number; total: number; label: string } | null>(null);
+  const [liveFrames, setLiveFrames] = useState<string[]>([]);
 
   const user = useAuthStore((s) => s.user);
   const updateUser = useAuthStore((s) => s.updateUser);
