@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useGenerationStore, getImageForStudio, type StudioType, type GeneratedItem } from "@/store/useGenerationStore";
 import { supabase } from "@/integrations/supabase/client";
+import { VideoPreview } from "@/components/VideoPreview";
 
 interface StudioShellProps {
   title: string;
@@ -164,8 +165,10 @@ const ResultCard = ({
       className="group relative rounded-2xl overflow-hidden cursor-pointer"
       style={{ aspectRatio: studio === "avatar" ? "1/1" : "16/9" }}
     >
-      {/* Background: real image or gradient */}
-      {item.imageUrl ? (
+      {/* Background: animated keyframes (video), real image, or gradient */}
+      {studio === "video" && item.frames && item.frames.length > 0 ? (
+        <VideoPreview frames={item.frames} />
+      ) : item.imageUrl ? (
         <img
           src={item.imageUrl}
           alt={item.prompt}
@@ -417,6 +420,9 @@ export const StudioShell = (props: StudioShellProps) => {
   const [prompt, setPrompt] = useState("");
   const [rendering, setRendering] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState(presets[0]);
+  // Video streaming progress
+  const [progress, setProgress] = useState<{ step: number; total: number; label: string } | null>(null);
+  const [liveFrames, setLiveFrames] = useState<string[]>([]);
 
   const user = useAuthStore((s) => s.user);
   const updateUser = useAuthStore((s) => s.updateUser);
@@ -450,14 +456,72 @@ export const StudioShell = (props: StudioShellProps) => {
     }
 
     setRendering(true);
+    setProgress({ step: 0, total: 5, label: "Starting…" });
+    setLiveFrames([]);
     const toastId = toast.loading(`Generating ${studioType}…`, { description: "This takes a moment." });
-    const useRealAI = studioType === "image" || studioType === "avatar";
-    const count = 4;
+    const useRealImage = studioType === "image" || studioType === "avatar";
+    const isVideo = studioType === "video";
+    const count = isVideo ? 1 : 4;
 
     try {
       let imageUrls: (string | undefined)[] = [];
+      let videoFrames: string[] = [];
 
-      if (useRealAI) {
+      if (isVideo) {
+        // Stream from generate-video edge function (SSE)
+        const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+        const ANON = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+        const resp = await fetch(`${SUPABASE_URL}/functions/v1/generate-video`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: ANON,
+            Authorization: `Bearer ${ANON}`,
+          },
+          body: JSON.stringify({ prompt, aspectRatio: "16:9" }),
+        });
+        if (!resp.ok || !resp.body) {
+          throw new Error(`Stream failed (${resp.status})`);
+        }
+
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let streamError: string | null = null;
+
+        // Parse SSE events from the stream
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const events = buffer.split("\n\n");
+          buffer = events.pop() ?? "";
+          for (const ev of events) {
+            const lines = ev.split("\n");
+            let eventName = "message";
+            let dataStr = "";
+            for (const line of lines) {
+              if (line.startsWith("event:")) eventName = line.slice(6).trim();
+              else if (line.startsWith("data:")) dataStr += line.slice(5).trim();
+            }
+            if (!dataStr) continue;
+            let payload: any;
+            try { payload = JSON.parse(dataStr); } catch { continue; }
+
+            if (eventName === "stage") {
+              setProgress({ step: payload.step, total: payload.total, label: payload.label });
+            } else if (eventName === "frame") {
+              videoFrames.push(payload.url);
+              setLiveFrames([...videoFrames]);
+            } else if (eventName === "done") {
+              if (Array.isArray(payload.frames)) videoFrames = payload.frames;
+            } else if (eventName === "error") {
+              streamError = payload.message || "Stream error";
+            }
+          }
+        }
+        if (videoFrames.length === 0) throw new Error(streamError || "No video frames generated");
+      } else if (useRealImage) {
         const aspectRatio = studioType === "avatar" ? "1:1" : "16:9";
         const { data, error } = await supabase.functions.invoke("generate-image", {
           body: { prompt, count, aspectRatio },
@@ -466,31 +530,47 @@ export const StudioShell = (props: StudioShellProps) => {
         if (!data?.images?.length) throw new Error("No images returned");
         imageUrls = data.images;
       } else {
-        // Simulated delay for non-image studios (video/music/voice previews)
+        // Simulated delay for music/voice previews
         await new Promise((r) => setTimeout(r, 2200 + Math.random() * 600));
         imageUrls = Array.from({ length: count }).map((_, i) =>
           getImageForStudio(studioType, i + Math.floor(Math.random() * 100))
         );
       }
 
-      const newItems: GeneratedItem[] = imageUrls.map((url, i) => ({
-        id: `gen_${Date.now()}_${i}`,
-        studio: studioType,
-        prompt,
-        preset: selectedPreset,
-        model,
-        meta: generateMeta(studioType, selectedPreset),
-        createdAt: Date.now(),
-        gradient: generateGradient(Math.floor(Math.random() * 8)),
-        imageUrl: url,
-      }));
+      let newItems: GeneratedItem[];
+      if (isVideo) {
+        newItems = [{
+          id: `gen_${Date.now()}`,
+          studio: studioType,
+          prompt,
+          preset: selectedPreset,
+          model,
+          meta: generateMeta(studioType, selectedPreset),
+          createdAt: Date.now(),
+          gradient: generateGradient(Math.floor(Math.random() * 8)),
+          imageUrl: videoFrames[0],
+          frames: videoFrames,
+        }];
+      } else {
+        newItems = imageUrls.map((url, i) => ({
+          id: `gen_${Date.now()}_${i}`,
+          studio: studioType,
+          prompt,
+          preset: selectedPreset,
+          model,
+          meta: generateMeta(studioType, selectedPreset),
+          createdAt: Date.now(),
+          gradient: generateGradient(Math.floor(Math.random() * 8)),
+          imageUrl: url,
+        }));
+      }
 
       addItems(newItems);
       updateUser({ credits: { ...user.credits, used: user.credits.used + creditCost } });
 
       toast.dismiss(toastId);
       toast.success("Generation complete! ✨", {
-        description: `${newItems.length} outputs ready · ${creditCost} credits used`,
+        description: `${newItems.length} output${newItems.length > 1 ? "s" : ""} ready · ${creditCost} credits used`,
       });
     } catch (err: any) {
       toast.dismiss(toastId);
@@ -504,6 +584,8 @@ export const StudioShell = (props: StudioShellProps) => {
       }
     } finally {
       setRendering(false);
+      setProgress(null);
+      setLiveFrames([]);
     }
   };
 
@@ -568,29 +650,86 @@ export const StudioShell = (props: StudioShellProps) => {
 
           <AnimatePresence mode="wait">
             {rendering ? (
-              <motion.div
-                key="loading"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className={`grid gap-3 sm:gap-4 ${studioType === "avatar" ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-2"}`}
-              >
-                {Array.from({ length: 4 }).map((_, i) => (
+              studioType === "video" ? (
+                <motion.div
+                  key="video-loading"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="space-y-4"
+                >
                   <div
-                    key={i}
-                    className="rounded-2xl bg-muted/40 flex items-center justify-center overflow-hidden"
-                    style={{ aspectRatio: studioType === "avatar" ? "1/1" : "16/9" }}
+                    className="relative rounded-2xl overflow-hidden bg-muted/30 border border-border/60"
+                    style={{ aspectRatio: "16/9" }}
                   >
-                    <div className="text-center space-y-3">
-                      <div className="relative mx-auto h-10 w-10">
-                        <RefreshCw className="h-10 w-10 text-primary/30 animate-spin absolute" />
-                        <Sparkles className="h-5 w-5 text-primary-glow absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
+                    {liveFrames.length > 0 ? (
+                      <VideoPreview frames={liveFrames} />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="relative h-12 w-12">
+                          <RefreshCw className="h-12 w-12 text-primary/30 animate-spin absolute" />
+                          <Sparkles className="h-6 w-6 text-primary-glow absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
+                        </div>
                       </div>
-                      <p className="text-xs text-muted-foreground font-mono">Rendering {i + 1}/4…</p>
+                    )}
+                    <div className="absolute left-3 right-3 bottom-3 glass-strong rounded-xl px-3 py-2.5 flex items-center gap-3">
+                      <div className="h-2 w-2 rounded-full bg-accent animate-pulse shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[11px] font-mono truncate">{progress?.label ?? "Working…"}</p>
+                        <div className="mt-1.5 h-1 rounded-full bg-white/10 overflow-hidden">
+                          <div
+                            className={`h-full bg-gradient-to-r ${accent} transition-all duration-500`}
+                            style={{ width: `${progress ? ((progress.step + 1) / progress.total) * 100 : 8}%` }}
+                          />
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-mono text-muted-foreground shrink-0">
+                        {progress ? `${progress.step + 1}/${progress.total}` : ""}
+                      </span>
                     </div>
                   </div>
-                ))}
-              </motion.div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className="aspect-video rounded-lg overflow-hidden bg-muted/30 border border-border/60 relative"
+                      >
+                        {liveFrames[i] ? (
+                          <img src={liveFrames[i]} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <span className="text-[10px] font-mono text-muted-foreground">Shot {i + 1}</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="loading"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className={`grid gap-3 sm:gap-4 ${studioType === "avatar" ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-2"}`}
+                >
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="rounded-2xl bg-muted/40 flex items-center justify-center overflow-hidden"
+                      style={{ aspectRatio: studioType === "avatar" ? "1/1" : "16/9" }}
+                    >
+                      <div className="text-center space-y-3">
+                        <div className="relative mx-auto h-10 w-10">
+                          <RefreshCw className="h-10 w-10 text-primary/30 animate-spin absolute" />
+                          <Sparkles className="h-5 w-5 text-primary-glow absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
+                        </div>
+                        <p className="text-xs text-muted-foreground font-mono">Rendering {i + 1}/4…</p>
+                      </div>
+                    </div>
+                  ))}
+                </motion.div>
+              )
             ) : (
               <motion.div
                 key="results"

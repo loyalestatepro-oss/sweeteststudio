@@ -13,6 +13,8 @@ export interface GeneratedItem {
   createdAt: number;
   // For image: real image URL
   imageUrl?: string;
+  // For video: ordered keyframe URLs animated as a preview
+  frames?: string[];
   // Display gradient fallback
   gradient: string;
 }
