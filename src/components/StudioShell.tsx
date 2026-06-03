@@ -426,7 +426,9 @@ export const StudioShell = (props: StudioShellProps) => {
 
   const user = useAuthStore((s) => s.user);
   const updateUser = useAuthStore((s) => s.updateUser);
-  const { items: allItems, addItems, deleteItem } = useGenerationStore();
+  const allItems = useGenerationStore((s) => s.items);
+  const addItems = useGenerationStore((s) => s.addItems);
+  const deleteItem = useGenerationStore((s) => s.deleteItem);
   const studioItems = allItems.filter((i) => i.studio === studioType);
 
   // Show generated items or fall back to defaults
