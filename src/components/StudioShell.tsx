@@ -727,18 +727,24 @@ export const StudioShell = (props: StudioShellProps) => {
                   {Array.from({ length: 4 }).map((_, i) => (
                     <div
                       key={i}
-                      className="rounded-2xl bg-muted/40 flex items-center justify-center overflow-hidden"
-                      style={{ aspectRatio: studioType === "avatar" ? "1/1" : "16/9" }}
+                      className="rounded-2xl flex items-center justify-center overflow-hidden relative border border-border/60"
+                      style={{
+                        aspectRatio: studioType === "avatar" ? "1/1" : "16/9",
+                        background: `linear-gradient(135deg, hsl(${260 + i * 25} 60% 18%), hsl(${220 + i * 15} 45% 10%))`,
+                      }}
                     >
-                      <div className="text-center space-y-3">
+                      <div className="absolute inset-0 opacity-50 animate-pulse"
+                        style={{ background: "linear-gradient(120deg, transparent 30%, hsl(280 80% 60% / 0.18) 50%, transparent 70%)" }} />
+                      <div className="relative text-center space-y-3">
                         <div className="relative mx-auto h-10 w-10">
-                          <RefreshCw className="h-10 w-10 text-primary/30 animate-spin absolute" />
+                          <RefreshCw className="h-10 w-10 text-primary-glow/40 animate-spin absolute" />
                           <Sparkles className="h-5 w-5 text-primary-glow absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
                         </div>
                         <p className="text-xs text-muted-foreground font-mono">Rendering {i + 1}/4…</p>
                       </div>
                     </div>
                   ))}
+
                 </motion.div>
               )
             ) : (
