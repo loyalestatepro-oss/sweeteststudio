@@ -659,15 +659,22 @@ export const StudioShell = (props: StudioShellProps) => {
                   className="space-y-4"
                 >
                   <div
-                    className="relative rounded-2xl overflow-hidden bg-muted/30 border border-border/60"
-                    style={{ aspectRatio: "16/9" }}
+                    className="relative rounded-2xl overflow-hidden border border-border/60"
+                    style={{
+                      aspectRatio: "16/9",
+                      background:
+                        "radial-gradient(120% 80% at 30% 20%, hsl(270 70% 22%) 0%, hsl(240 50% 10%) 60%, hsl(230 30% 6%) 100%)",
+                    }}
                   >
+                    {/* Animated shimmer while frames load */}
+                    <div className="absolute inset-0 opacity-60 animate-pulse"
+                      style={{ background: "linear-gradient(120deg, transparent 30%, hsl(280 80% 60% / 0.15) 50%, transparent 70%)" }} />
                     {liveFrames.length > 0 ? (
                       <VideoPreview frames={liveFrames} />
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="relative h-12 w-12">
-                          <RefreshCw className="h-12 w-12 text-primary/30 animate-spin absolute" />
+                        <div className="relative h-14 w-14">
+                          <RefreshCw className="h-14 w-14 text-primary-glow/40 animate-spin absolute" />
                           <Sparkles className="h-6 w-6 text-primary-glow absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
                         </div>
                       </div>
@@ -692,7 +699,10 @@ export const StudioShell = (props: StudioShellProps) => {
                     {Array.from({ length: 3 }).map((_, i) => (
                       <div
                         key={i}
-                        className="aspect-video rounded-lg overflow-hidden bg-muted/30 border border-border/60 relative"
+                        className="aspect-video rounded-lg overflow-hidden border border-border/60 relative"
+                        style={{
+                          background: `linear-gradient(135deg, hsl(${260 + i * 30} 60% 18%), hsl(${230 + i * 20} 40% 8%))`,
+                        }}
                       >
                         {liveFrames[i] ? (
                           <img src={liveFrames[i]} alt="" className="w-full h-full object-cover" />
@@ -704,6 +714,7 @@ export const StudioShell = (props: StudioShellProps) => {
                       </div>
                     ))}
                   </div>
+
                 </motion.div>
               ) : (
                 <motion.div
