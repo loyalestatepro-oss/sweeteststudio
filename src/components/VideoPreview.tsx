@@ -23,7 +23,14 @@ export const VideoPreview = ({ frames, className }: VideoPreviewProps) => {
   if (frames.length === 0) return null;
 
   return (
-    <div className={`absolute inset-0 overflow-hidden bg-black ${className ?? ""}`}>
+    <div
+      className={`absolute inset-0 overflow-hidden ${className ?? ""}`}
+      style={{
+        background:
+          "radial-gradient(120% 80% at 30% 20%, hsl(270 60% 18%) 0%, hsl(240 40% 8%) 60%, hsl(230 30% 4%) 100%)",
+      }}
+    >
+
       {frames.map((src, i) => {
         const active = i === index;
         // Stagger Ken Burns transform per frame for cinematic variety
