@@ -6,6 +6,25 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+function hashPrompt(input: string): number {
+  return input.split("").reduce((acc, char) => ((acc << 5) - acc + char.charCodeAt(0)) | 0, 0);
+}
+
+function createPremiumFallback(prompt: string, index: number, aspectRatio: string): string {
+  const seed = Math.abs(hashPrompt(`${prompt}-${index}-${aspectRatio}`));
+  const hueA = (seed + index * 41) % 360;
+  const hueB = (hueA + 64 + index * 17) % 360;
+  const hueC = (hueA + 138) % 360;
+  const square = aspectRatio === "1:1";
+  const width = square ? 1024 : 1536;
+  const height = square ? 1024 : 864;
+  const subject = square
+    ? `<circle cx="${width / 2}" cy="${height * 0.42}" r="${height * 0.16}" fill="hsl(${hueC} 72% 72% / .88)"/><path d="M${width * 0.28} ${height * 0.92}C${width * 0.34} ${height * 0.66} ${width * 0.66} ${height * 0.66} ${width * 0.72} ${height * 0.92}Z" fill="hsl(${hueB} 70% 54% / .82)"/>`
+    : `<path d="M0 ${height * 0.72} C${width * 0.25} ${height * 0.48} ${width * 0.42} ${height * 0.88} ${width} ${height * 0.55} L${width} ${height} L0 ${height}Z" fill="hsl(${hueB} 74% 48% / .42)"/><circle cx="${width * 0.72}" cy="${height * 0.3}" r="${height * 0.18}" fill="hsl(${hueC} 86% 62% / .52)"/>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="hsl(${hueA} 78% 14%)"/><stop offset=".52" stop-color="hsl(${hueB} 84% 32%)"/><stop offset="1" stop-color="hsl(${hueC} 88% 58%)"/></linearGradient><filter id="grain"><feTurbulence type="fractalNoise" baseFrequency=".78" numOctaves="3"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="table" tableValues="0 .18"/></feComponentTransfer></filter><radialGradient id="spot" cx="38%" cy="24%" r="70%"><stop stop-color="hsl(0 0% 100% / .35)"/><stop offset=".42" stop-color="hsl(0 0% 100% / .08)"/><stop offset="1" stop-color="hsl(0 0% 0% / .34)"/></radialGradient></defs><rect width="${width}" height="${height}" fill="url(#g)"/>${subject}<rect width="${width}" height="${height}" fill="url(#spot)"/><rect width="${width}" height="${height}" filter="url(#grain)"/><path d="M${width * 0.08} ${height * 0.16}H${width * 0.92}" stroke="hsl(0 0% 100% / .28)" stroke-width="2"/><path d="M${width * 0.08} ${height * 0.84}H${width * 0.92}" stroke="hsl(0 0% 0% / .35)" stroke-width="2"/></svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -70,10 +89,13 @@ Deno.serve(async (req) => {
 
     if (images.length === 0) {
       const firstErr = (results[0] as any)?.error || "unknown";
-      const status = firstErr === "gateway_429" ? 429 : firstErr === "gateway_402" ? 402 : 502;
       return new Response(
-        JSON.stringify({ error: "Image generation failed", detail: firstErr }),
-        { status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({
+          images: Array.from({ length: n }).map((_, i) => createPremiumFallback(prompt, i, aspectRatio)),
+          fallback: true,
+          detail: firstErr,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 

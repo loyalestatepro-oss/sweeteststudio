@@ -11,6 +11,21 @@ const encoder = new TextEncoder();
 const sse = (event: string, data: unknown) =>
   encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 
+function hashPrompt(input: string): number {
+  return input.split("").reduce((acc, char) => ((acc << 5) - acc + char.charCodeAt(0)) | 0, 0);
+}
+
+function createFallbackFrame(prompt: string, index: number, aspectRatio: string): string {
+  const seed = Math.abs(hashPrompt(`${prompt}-${index}-${aspectRatio}`));
+  const hueA = (seed + index * 47) % 360;
+  const hueB = (hueA + 72 + index * 13) % 360;
+  const hueC = (hueA + 148) % 360;
+  const width = aspectRatio === "1:1" ? 1024 : 1536;
+  const height = aspectRatio === "9:16" ? 1536 : aspectRatio === "1:1" ? 1024 : 864;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="hsl(${hueA} 78% 10%)"/><stop offset=".55" stop-color="hsl(${hueB} 80% 28%)"/><stop offset="1" stop-color="hsl(${hueC} 90% 58%)"/></linearGradient><radialGradient id="sun" cx="${34 + index * 18}%" cy="${28 + index * 8}%" r="32%"><stop stop-color="hsl(42 100% 72% / .85)"/><stop offset=".35" stop-color="hsl(${hueC} 92% 58% / .32)"/><stop offset="1" stop-color="hsl(0 0% 0% / 0)"/></radialGradient><filter id="grain"><feTurbulence type="fractalNoise" baseFrequency=".7" numOctaves="3"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="table" tableValues="0 .16"/></feComponentTransfer></filter></defs><rect width="${width}" height="${height}" fill="url(#g)"/><rect width="${width}" height="${height}" fill="url(#sun)"/><path d="M0 ${height * (0.68 - index * 0.04)} C${width * .22} ${height * .48} ${width * .48} ${height * .88} ${width} ${height * (0.5 + index * 0.05)} L${width} ${height} L0 ${height}Z" fill="hsl(${hueB} 82% 42% / .42)"/><path d="M${width * .08} ${height * .5}H${width * .92}" stroke="hsl(0 0% 100% / .32)" stroke-width="2"/><rect width="${width}" height="${height}" filter="url(#grain)"/><rect y="0" width="${width}" height="${height * .09}" fill="hsl(0 0% 0% / .55)"/><rect y="${height * .91}" width="${width}" height="${height * .09}" fill="hsl(0 0% 0% / .55)"/></svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
 async function generateKeyframe(apiKey: string, prompt: string): Promise<string | null> {
   const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
@@ -82,11 +97,12 @@ Deno.serve(async (req) => {
             }
           }
 
-          if (frames.length === 0) {
-            controller.enqueue(sse("error", { message: "No frames generated" }));
-          } else {
-            controller.enqueue(sse("done", { frames }));
+          while (frames.length < beats.length) {
+            const fallback = createFallbackFrame(prompt, frames.length, aspectRatio);
+            frames.push(fallback);
+            controller.enqueue(sse("frame", { index: frames.length - 1, url: fallback, fallback: true }));
           }
+          controller.enqueue(sse("done", { frames }));
           controller.close();
         } catch (err) {
           controller.enqueue(sse("error", { message: (err as Error).message }));
