@@ -363,8 +363,9 @@ const Controls = ({
 
 // Right history panel
 const HistoryPanel = ({ studioType, accent }: { studioType: StudioType; accent: string }) => {
-  const items = useGenerationStore((s) => s.items.filter((i) => i.studio === studioType));
+  const allItems = useGenerationStore((s) => s.items);
   const deleteItem = useGenerationStore((s) => s.deleteItem);
+  const items = allItems.filter((i) => i.studio === studioType);
   const isAudio = studioType === "music" || studioType === "voice";
 
   return (
