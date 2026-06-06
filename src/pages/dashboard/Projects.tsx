@@ -7,7 +7,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 
@@ -163,6 +163,7 @@ const Projects = () => {
         <DialogContent className="bg-popover border-border/60">
           <DialogHeader>
             <DialogTitle className="font-display text-2xl">New project</DialogTitle>
+            <DialogDescription>Set up a new creative project to organize your generations.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
