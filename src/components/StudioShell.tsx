@@ -4,7 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import {
   Sparkles, Wand2, Download, RefreshCw, Settings2, Upload, Play,
   SlidersHorizontal, History, Trash2, type LucideIcon, Music2, Mic2, Pause,
@@ -610,6 +610,8 @@ export const StudioShell = (props: StudioShellProps) => {
               <Button variant="outline" size="sm" className="glass border-border/60"><SlidersHorizontal className="h-4 w-4" /></Button>
             </SheetTrigger>
             <SheetContent side="left" className="p-0 w-[88vw] sm:w-96 bg-background border-border/60 overflow-y-auto">
+              <SheetTitle className="sr-only">{title} controls</SheetTitle>
+              <SheetDescription className="sr-only">Adjust prompt, model, preset, and generation settings.</SheetDescription>
               <Controls {...ctrl} />
             </SheetContent>
           </Sheet>
@@ -618,6 +620,8 @@ export const StudioShell = (props: StudioShellProps) => {
               <Button variant="outline" size="sm" className="glass border-border/60"><History className="h-4 w-4" /></Button>
             </SheetTrigger>
             <SheetContent side="right" className="p-0 w-[88vw] sm:w-80 bg-background border-border/60 overflow-y-auto">
+              <SheetTitle className="sr-only">{title} history</SheetTitle>
+              <SheetDescription className="sr-only">Review and manage previous generations.</SheetDescription>
               <HistoryPanel studioType={studioType} accent={accent} />
             </SheetContent>
           </Sheet>
