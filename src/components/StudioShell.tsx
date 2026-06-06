@@ -548,17 +548,26 @@ export const StudioShell = (props: StudioShellProps) => {
         if (videoFrames.length === 0) throw new Error(streamError || "No video frames generated");
       } else if (useRealImage) {
         const aspectRatio = studioType === "avatar" ? "1:1" : "16:9";
-        const { data, error } = await supabase.functions.invoke("generate-image", {
-          body: { prompt, count, aspectRatio },
-        });
-        if (error) throw new Error(error.message || "Generation failed");
-        if (!data?.images?.length) throw new Error("No images returned");
-        imageUrls = data.images;
+        try {
+          const { data, error } = await supabase.functions.invoke("generate-image", {
+            body: { prompt, count, aspectRatio },
+          });
+          if (error) throw new Error(error.message || "Generation failed");
+          if (!data?.images?.length) throw new Error("No images returned");
+          imageUrls = data.images;
+        } catch (error: any) {
+          imageUrls = createFallbackUrls(studioType, prompt, count, aspectRatio);
+          toast.warning("Premium preview rendered locally.", {
+            description: String(error?.message || "AI service unavailable").includes("402")
+              ? "Cloud AI credits are exhausted, so the studio used a polished fallback."
+              : "Cloud rendering was unavailable, so the studio used a polished fallback.",
+          });
+        }
       } else {
         // Simulated delay for music/voice previews
         await new Promise((r) => setTimeout(r, 2200 + Math.random() * 600));
         imageUrls = Array.from({ length: count }).map((_, i) =>
-          getImageForStudio(studioType, i + Math.floor(Math.random() * 100))
+          getImageForStudio(studioType, i + Math.floor(Math.random() * 100)) ?? createPremiumFallback(studioType, prompt, i)
         );
       }
 
