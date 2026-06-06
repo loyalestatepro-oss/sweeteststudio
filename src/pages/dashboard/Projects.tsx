@@ -163,6 +163,7 @@ const Projects = () => {
         <DialogContent className="bg-popover border-border/60">
           <DialogHeader>
             <DialogTitle className="font-display text-2xl">New project</DialogTitle>
+            <DialogDescription>Set up a new creative project to organize your generations.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
