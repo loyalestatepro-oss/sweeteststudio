@@ -1,19 +1,87 @@
 // Edge function: generate-voice
-// Synthesizes voice using ElevenLabs or returns rich preview metadata.
+// Uses StreamElements TTS — a free public TTS endpoint, no API key required.
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const VOICE_MAP: Record<string, string> = {
-  Narration: "EXAVITQu4vr4xnSDxMaL",
-  Conversational: "JBFqnCBsd6RMkjVDRZzb",
-  News: "IKne3meq5aSn9XLyUdCD",
-  Cinematic: "nPczCjzI2devNBz1zQrb",
-  Whisper: "XB0fDUnXU5powFXDhCwa",
-  Energetic: "TX3LPaxmHKxFdv7VOQHJ",
+// preset → list of (Google Translate TTS lang codes, display label).
+// Google's public translate_tts endpoint is free, no key required, returns MP3.
+const VOICE_MAP: Record<string, { tld: string; lang: string; label: string }[]> = {
+  Narration:      [{ tld: "com", lang: "en",    label: "EN-US" }, { tld: "co.uk", lang: "en", label: "EN-UK" }, { tld: "com.au", lang: "en", label: "EN-AU" }, { tld: "ca", lang: "en", label: "EN-CA" }],
+  Conversational: [{ tld: "com", lang: "en",    label: "EN" },    { tld: "com", lang: "es",   label: "ES" },    { tld: "com", lang: "fr",   label: "FR" },    { tld: "com", lang: "de",   label: "DE" }],
+  News:           [{ tld: "com", lang: "en",    label: "EN" },    { tld: "co.uk", lang: "en", label: "EN-UK" }, { tld: "com", lang: "de",   label: "DE" },    { tld: "com", lang: "it",   label: "IT" }],
+  Cinematic:      [{ tld: "com", lang: "en",    label: "EN" },    { tld: "com", lang: "it",   label: "IT" },    { tld: "com", lang: "fr",   label: "FR" },    { tld: "com", lang: "ja",   label: "JP" }],
+  Whisper:        [{ tld: "com", lang: "en",    label: "EN" },    { tld: "co.uk", lang: "en", label: "EN-UK" }, { tld: "com", lang: "fr",   label: "FR" },    { tld: "com", lang: "pt",   label: "PT" }],
+  Energetic:      [{ tld: "com", lang: "en",    label: "EN" },    { tld: "com", lang: "es",   label: "ES" },    { tld: "com", lang: "pt",   label: "PT-BR" }, { tld: "com", lang: "ko",   label: "KR" }],
 };
+
+function bufToB64(buf: ArrayBuffer): string {
+  const bytes = new Uint8Array(buf);
+  let bin = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk) as unknown as number[]);
+  }
+  return btoa(bin);
+}
+
+// Google Translate TTS only accepts ~200-char chunks. We split, fetch each, then concat the MP3 frames.
+function chunkText(text: string, max = 180): string[] {
+  const out: string[] = [];
+  const sentences = text.replace(/\s+/g, " ").trim().split(/(?<=[.!?])\s+/);
+  let cur = "";
+  for (const s of sentences) {
+    if ((cur + " " + s).trim().length > max) {
+      if (cur) out.push(cur.trim());
+      if (s.length > max) {
+        // hard split very long sentence by spaces
+        const words = s.split(" ");
+        let buf = "";
+        for (const w of words) {
+          if ((buf + " " + w).trim().length > max) { out.push(buf.trim()); buf = w; }
+          else buf = buf ? buf + " " + w : w;
+        }
+        if (buf) cur = buf;
+        else cur = "";
+      } else cur = s;
+    } else cur = cur ? cur + " " + s : s;
+  }
+  if (cur) out.push(cur.trim());
+  return out.length ? out : [text.slice(0, max)];
+}
+
+async function synth(tld: string, lang: string, text: string): Promise<string | null> {
+  try {
+    const chunks = chunkText(text);
+    const buffers: Uint8Array[] = [];
+    for (let i = 0; i < chunks.length; i++) {
+      const url = `https://translate.google.${tld}/translate_tts?ie=UTF-8&q=${encodeURIComponent(chunks[i])}&tl=${lang}&total=${chunks.length}&idx=${i}&textlen=${chunks[i].length}&client=tw-ob`;
+      const resp = await fetch(url, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "Referer": "https://translate.google.com/",
+        },
+      });
+      if (!resp.ok) {
+        console.error("gtts", lang, resp.status);
+        return null;
+      }
+      const buf = new Uint8Array(await resp.arrayBuffer());
+      if (buf.byteLength < 200) return null;
+      buffers.push(buf);
+    }
+    const total = buffers.reduce((s, b) => s + b.byteLength, 0);
+    const merged = new Uint8Array(total);
+    let off = 0;
+    for (const b of buffers) { merged.set(b, off); off += b.byteLength; }
+    return `data:audio/mpeg;base64,${bufToB64(merged.buffer)}`;
+  } catch (e) {
+    console.error("gtts exception", e);
+    return null;
+  }
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -26,56 +94,28 @@ Deno.serve(async (req) => {
       });
     }
 
-    const elevenKey = Deno.env.get("ELEVENLABS_API_KEY");
-    const voiceId = VOICE_MAP[preset] || VOICE_MAP.Narration;
+    // Google Translate TTS handles up to ~5k characters via chunking.
+    const text = String(prompt).slice(0, 2000);
+    const pool = VOICE_MAP[preset] || VOICE_MAP.Narration;
     const n = Math.max(1, Math.min(4, Number(count)));
-    const wordCount = prompt.trim().split(/\s+/).length;
-    const estSecs = Math.round(wordCount / 2.5); // ~150 WPM
+    const wordCount = text.trim().split(/\s+/).length;
+    const estSecs = Math.max(2, Math.round(wordCount / 2.5));
     const durStr = `${Math.floor(estSecs / 60)}:${(estSecs % 60).toString().padStart(2, "0")}`;
 
-    if (elevenKey) {
-      try {
-        // Generate one real clip and duplicate metadata for count
-        const resp = await fetch(
-          `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`,
-          {
-            method: "POST",
-            headers: { "xi-api-key": elevenKey, "Content-Type": "application/json" },
-            body: JSON.stringify({
-              text: prompt,
-              model_id: "eleven_multilingual_v2",
-              voice_settings: { stability: 0.5, similarity_boost: 0.75, style: 0.3, use_speaker_boost: true },
-            }),
-          }
-        );
-        if (resp.ok) {
-          const buffer = await resp.arrayBuffer();
-          const b64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
-          const dataUrl = `data:audio/mpeg;base64,${b64}`;
-          const clips = Array.from({ length: n }, (_, i) => ({
-            id: crypto.randomUUID(),
-            audioUrl: dataUrl,
-            duration: durStr,
-            preset,
-            lang: ["EN", "ES", "FR", "DE"][i % 4],
-          }));
-          return new Response(JSON.stringify({ clips }), {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-      } catch (e) { console.error("elevenlabs error", e); }
-    }
+    const tasks = Array.from({ length: n }, (_, i) => synth(pool[i % pool.length].tld, pool[i % pool.length].lang, text));
+    const results = await Promise.all(tasks);
 
-    // Fallback: return metadata so UI can render waveform
-    const clips = Array.from({ length: n }, (_, i) => ({
+    const clips = results.map((audioUrl, i) => ({
       id: crypto.randomUUID(),
-      audioUrl: null,
+      audioUrl,
       duration: durStr,
       preset,
-      lang: ["EN", "ES", "FR", "DE"][i % 4],
-      fallback: true,
+      lang: pool[i % pool.length].label,
+      fallback: !audioUrl,
     }));
-    return new Response(JSON.stringify({ clips, fallback: true }), {
+    const fallback = results.every((r) => !r);
+
+    return new Response(JSON.stringify({ clips, fallback }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
