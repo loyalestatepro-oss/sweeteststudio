@@ -592,7 +592,7 @@ export const StudioShell = (props: StudioShellProps) => {
           });
           if (error) throw new Error(error.message);
           clips = data?.clips || [];
-          if (data?.fallback) toast.info("Waveform preview mode.", { description: "Add ELEVENLABS_API_KEY for real voice." });
+          if (data?.fallback) toast.info("Voice service temporarily unavailable.");
         } catch {
           clips = Array.from({ length: count }, (_, i) => ({
             id: `c_${Date.now()}_${i}`,
