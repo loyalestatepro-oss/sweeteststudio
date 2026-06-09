@@ -564,7 +564,7 @@ export const StudioShell = (props: StudioShellProps) => {
           });
           if (error) throw new Error(error.message);
           tracks = data?.tracks || [];
-          if (data?.fallback) toast.info("Waveform preview mode.", { description: "Add SUNO_API_KEY for real music." });
+          if (data?.fallback) toast.info("Synthesized preview generated.");
         } catch {
           // Build entirely client-side
           tracks = Array.from({ length: count }, (_, i) => ({
