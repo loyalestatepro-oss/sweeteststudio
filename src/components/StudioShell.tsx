@@ -155,9 +155,23 @@ const ResultCard = ({
         audioRef.current.play().catch(() => toast.error("Could not play audio."));
         setPlaying(true);
       }
+    } else if (studio === "voice" && "speechSynthesis" in window) {
+      // Last-resort: browser SpeechSynthesis (live playback, no download).
+      if (playing) {
+        window.speechSynthesis.cancel();
+        setPlaying(false);
+      } else {
+        const utt = new SpeechSynthesisUtterance(item.prompt);
+        utt.rate = 1; utt.pitch = 1;
+        utt.onend = () => setPlaying(false);
+        utt.onerror = () => setPlaying(false);
+        window.speechSynthesis.speak(utt);
+        setPlaying(true);
+        toast.info("Playing via browser voice (no download).");
+      }
     } else {
       setPlaying((v) => !v);
-      toast.info(playing ? "Paused." : `Previewing ${studio} waveform — add API key for real audio.`);
+      toast.info(playing ? "Paused." : `Previewing ${studio} waveform.`);
     }
   };
 
