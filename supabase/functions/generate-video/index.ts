@@ -49,25 +49,20 @@ function fallbackFrame(prompt: string, idx: number, aspect: string): string {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
-async function generateKeyframe(apiKey: string, prompt: string): Promise<string | null> {
+async function generateKeyframe(prompt: string, idx: number, aspect: string): Promise<string | null> {
   try {
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image",
-        messages: [{ role: "user", content: prompt }],
-        modalities: ["image", "text"],
-      }),
-    });
-    if (!resp.ok) { console.error("keyframe", resp.status, await resp.text()); return null; }
-    const data = await resp.json();
-    const choice = data?.choices?.[0];
-    return (
-      choice?.message?.images?.[0]?.image_url?.url ||
-      choice?.message?.content?.[0]?.image_url?.url ||
-      null
-    );
+    const vert = aspect === "9:16";
+    const sq = aspect === "1:1";
+    const w = sq ? 1024 : vert ? 720 : 1280;
+    const h = sq ? 1024 : vert ? 1280 : 720;
+    const seed = Math.abs(hashStr(prompt) + idx * 7919) % 1000000;
+    const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true&enhance=true&referrer=lovable.app`;
+    const resp = await fetch(url);
+    if (!resp.ok) { console.error("keyframe pollinations", resp.status); return null; }
+    const buf = new Uint8Array(await resp.arrayBuffer());
+    if (buf.length < 1000) return null;
+    let bin = ""; for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+    return `data:image/jpeg;base64,${btoa(bin)}`;
   } catch (e) { console.error("keyframe exception", e); return null; }
 }
 
@@ -82,7 +77,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    const apiKey = Deno.env.get("LOVABLE_API_KEY");
     const aspectHint = aspectRatio === "9:16" ? "vertical 9:16 portrait" : aspectRatio === "1:1" ? "square 1:1" : "cinematic 16:9 widescreen";
 
     const beats = [
@@ -95,20 +89,18 @@ Deno.serve(async (req) => {
       async start(ctrl) {
         try {
           ctrl.enqueue(sse("stage", { step: 0, total: 5, label: "Analyzing prompt…" }));
-          await new Promise(r => setTimeout(r, 300));
+          await new Promise(r => setTimeout(r, 200));
           ctrl.enqueue(sse("stage", { step: 1, total: 5, label: "Storyboarding shots…" }));
-          await new Promise(r => setTimeout(r, 300));
+          await new Promise(r => setTimeout(r, 200));
 
           const frames: string[] = [];
           for (let i = 0; i < beats.length; i++) {
             ctrl.enqueue(sse("stage", { step: 2 + i, total: 5, label: `Rendering keyframe ${i+1}/3…` }));
-            let url: string | null = null;
-            if (apiKey) {
-              url = await generateKeyframe(apiKey, beats[i]);
-            }
+            let url = await generateKeyframe(beats[i], i, aspectRatio);
+            const isFallback = !url;
             if (!url) url = fallbackFrame(prompt, i, aspectRatio);
             frames.push(url);
-            ctrl.enqueue(sse("frame", { index: i, url, fallback: !apiKey }));
+            ctrl.enqueue(sse("frame", { index: i, url, fallback: isFallback }));
           }
 
           ctrl.enqueue(sse("done", { frames }));

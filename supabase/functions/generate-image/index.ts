@@ -1,5 +1,5 @@
 // Edge function: generate-image
-// Uses Lovable AI Gateway (Gemini 2.5 Flash Image) — auto-provisioned LOVABLE_API_KEY.
+// Primary: Pollinations.ai (free, no key). Fallback: Lovable AI Gateway. Final: SVG.
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -17,92 +17,49 @@ function premiumSVG(prompt: string, idx: number, aspect: string): string {
   const hC = (hA + 138) % 360;
   const sq = aspect === "1:1";
   const w = sq ? 1024 : 1536, h = sq ? 1024 : 864;
-  const subj = sq
-    ? `<circle cx="${w/2}" cy="${h*.42}" r="${h*.16}" fill="hsl(${hC} 72% 72%/.88)"/>
-       <path d="M${w*.28} ${h*.92}C${w*.34} ${h*.66} ${w*.66} ${h*.66} ${w*.72} ${h*.92}Z" fill="hsl(${hB} 70% 54%/.82)"/>`
-    : `<path d="M0 ${h*.72}C${w*.25} ${h*.48} ${w*.42} ${h*.88} ${w} ${h*.55}L${w} ${h} 0 ${h}Z" fill="hsl(${hB} 74% 48%/.42)"/>
-       <circle cx="${w*.72}" cy="${h*.3}" r="${h*.18}" fill="hsl(${hC} 86% 62%/.52)"/>`;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}">
-    <defs>
-      <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-        <stop stop-color="hsl(${hA} 78% 14%)"/>
-        <stop offset=".52" stop-color="hsl(${hB} 84% 32%)"/>
-        <stop offset="1" stop-color="hsl(${hC} 88% 58%)"/>
-      </linearGradient>
-      <radialGradient id="spot" cx="38%" cy="24%" r="70%">
-        <stop stop-color="hsl(0 0% 100%/.35)"/>
-        <stop offset=".42" stop-color="hsl(0 0% 100%/.08)"/>
-        <stop offset="1" stop-color="hsl(0 0% 0%/.34)"/>
-      </radialGradient>
-    </defs>
+    <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="hsl(${hA} 78% 14%)"/><stop offset=".52" stop-color="hsl(${hB} 84% 32%)"/>
+      <stop offset="1" stop-color="hsl(${hC} 88% 58%)"/></linearGradient></defs>
     <rect width="${w}" height="${h}" fill="url(#g)"/>
-    ${subj}
-    <rect width="${w}" height="${h}" fill="url(#spot)"/>
-    <text x="${w*.5}" y="${h*.5}" text-anchor="middle" dominant-baseline="middle"
-      font-family="system-ui" font-size="${h*.028}" fill="hsl(0 0% 100%/.55)" xml:space="preserve">${prompt.slice(0,60)}</text>
+    <text x="${w*.5}" y="${h*.5}" text-anchor="middle" font-family="system-ui" font-size="${h*.03}" fill="hsl(0 0% 100%/.7)">${prompt.slice(0,60)}</text>
   </svg>`;
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
-async function callGateway(apiKey: string, styledPrompt: string): Promise<string | null> {
+async function fetchPollinations(prompt: string, idx: number, aspect: string): Promise<string | null> {
   try {
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image",
-        messages: [{ role: "user", content: styledPrompt }],
-        modalities: ["image", "text"],
-      }),
-    });
-    if (!resp.ok) {
-      console.error("gateway", resp.status, await resp.text());
-      return null;
-    }
-    const data = await resp.json();
-    const choice = data?.choices?.[0];
-    const url =
-      choice?.message?.images?.[0]?.image_url?.url ||
-      choice?.message?.content?.[0]?.image_url?.url ||
-      choice?.message?.image_url?.url ||
-      null;
-    return url;
-  } catch (e) {
-    console.error("gateway exception", e);
-    return null;
-  }
+    const sq = aspect === "1:1";
+    const vert = aspect === "9:16";
+    const w = sq ? 1024 : vert ? 720 : 1280;
+    const h = sq ? 1024 : vert ? 1280 : 720;
+    const seed = Math.abs(hashStr(prompt) + idx * 7919) % 1000000;
+    const enc = encodeURIComponent(prompt);
+    const url = `https://image.pollinations.ai/prompt/${enc}?width=${w}&height=${h}&seed=${seed}&nologo=true&enhance=true&referrer=lovable.app`;
+    const resp = await fetch(url);
+    if (!resp.ok) { console.error("pollinations", resp.status); return null; }
+    const buf = new Uint8Array(await resp.arrayBuffer());
+    if (buf.length < 1000) return null;
+    let bin = ""; for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+    return `data:image/jpeg;base64,${btoa(bin)}`;
+  } catch (e) { console.error("pollinations err", e); return null; }
 }
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
-
   try {
     const body = await req.json();
     const prompt: string = body.prompt ?? "";
-    const count: number = Number(body.count) || 4;
+    const count: number = Math.max(1, Math.min(4, Number(body.count) || 4));
     const aspectRatio: string = body.aspectRatio ?? "16:9";
-
     if (!prompt.trim()) {
       return new Response(JSON.stringify({ error: "Prompt is required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const apiKey = Deno.env.get("LOVABLE_API_KEY");
-    const n = Math.max(1, Math.min(4, count));
-    const aspectHint = aspectRatio === "1:1" ? "square 1:1 portrait composition" : aspectRatio === "9:16" ? "vertical 9:16" : "cinematic 16:9 widescreen";
-    const styled = `${prompt}. Ultra-detailed, professional, ${aspectHint}, premium quality, sharp focus, photorealistic.`;
-
-    if (!apiKey) {
-      const images = Array.from({ length: n }, (_, i) => premiumSVG(prompt, i, aspectRatio));
-      return new Response(JSON.stringify({ images, fallback: true, detail: "no_api_key" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const tasks = Array.from({ length: n }, (_, i) =>
-      callGateway(apiKey, i === 0 ? styled : `${styled} Variation ${i + 1}, unique angle, different composition.`)
-    );
+    const variations = [prompt, `${prompt}, cinematic lighting, ultra detailed`, `${prompt}, different angle, vibrant colors`, `${prompt}, artistic composition, dramatic`];
+    const tasks = Array.from({ length: count }, (_, i) => fetchPollinations(variations[i] || prompt, i, aspectRatio));
     const results = await Promise.all(tasks);
     const images = results.map((u, i) => u ?? premiumSVG(prompt, i, aspectRatio));
     const allFallback = results.every((u) => !u);
