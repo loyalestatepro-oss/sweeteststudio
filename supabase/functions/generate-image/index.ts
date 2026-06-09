@@ -35,7 +35,7 @@ async function fetchPollinations(prompt: string, idx: number, aspect: string): P
     const h = sq ? 1024 : vert ? 1280 : 720;
     const seed = Math.abs(hashStr(prompt) + idx * 7919) % 1000000;
     const enc = encodeURIComponent(prompt);
-    const url = `https://image.pollinations.ai/prompt/${enc}?width=${w}&height=${h}&seed=${seed}&nologo=true&enhance=true&model=flux`;
+    const url = `https://image.pollinations.ai/prompt/${enc}?width=${w}&height=${h}&seed=${seed}&nologo=true&enhance=true&referrer=lovable.app`;
     const resp = await fetch(url);
     if (!resp.ok) { console.error("pollinations", resp.status); return null; }
     const buf = new Uint8Array(await resp.arrayBuffer());

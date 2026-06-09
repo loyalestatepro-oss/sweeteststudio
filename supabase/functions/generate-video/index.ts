@@ -56,7 +56,7 @@ async function generateKeyframe(prompt: string, idx: number, aspect: string): Pr
     const w = sq ? 1024 : vert ? 720 : 1280;
     const h = sq ? 1024 : vert ? 1280 : 720;
     const seed = Math.abs(hashStr(prompt) + idx * 7919) % 1000000;
-    const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true&enhance=true&model=flux`;
+    const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true&enhance=true&referrer=lovable.app`;
     const resp = await fetch(url);
     if (!resp.ok) { console.error("keyframe pollinations", resp.status); return null; }
     const buf = new Uint8Array(await resp.arrayBuffer());
