@@ -1,5 +1,5 @@
 // Edge function: generate-image
-// Uses Lovable AI Gateway (Gemini Flash Image) with robust fallback to premium SVG
+// Uses Lovable AI Gateway (Gemini 2.5 Flash Image) — auto-provisioned LOVABLE_API_KEY.
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -29,10 +29,6 @@ function premiumSVG(prompt: string, idx: number, aspect: string): string {
         <stop offset=".52" stop-color="hsl(${hB} 84% 32%)"/>
         <stop offset="1" stop-color="hsl(${hC} 88% 58%)"/>
       </linearGradient>
-      <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency=".78" numOctaves="3"/>
-        <feColorMatrix type="saturate" values="0"/>
-        <feComponentTransfer><feFuncA type="table" tableValues="0 .18"/></feComponentTransfer>
-      </filter>
       <radialGradient id="spot" cx="38%" cy="24%" r="70%">
         <stop stop-color="hsl(0 0% 100%/.35)"/>
         <stop offset=".42" stop-color="hsl(0 0% 100%/.08)"/>
@@ -42,7 +38,6 @@ function premiumSVG(prompt: string, idx: number, aspect: string): string {
     <rect width="${w}" height="${h}" fill="url(#g)"/>
     ${subj}
     <rect width="${w}" height="${h}" fill="url(#spot)"/>
-    <rect width="${w}" height="${h}" filter="url(#grain)"/>
     <text x="${w*.5}" y="${h*.5}" text-anchor="middle" dominant-baseline="middle"
       font-family="system-ui" font-size="${h*.028}" fill="hsl(0 0% 100%/.55)" xml:space="preserve">${prompt.slice(0,60)}</text>
   </svg>`;
@@ -55,7 +50,7 @@ async function callGateway(apiKey: string, styledPrompt: string): Promise<string
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-preview-05-20",
+        model: "google/gemini-2.5-flash-image",
         messages: [{ role: "user", content: styledPrompt }],
         modalities: ["image", "text"],
       }),
@@ -95,7 +90,7 @@ Deno.serve(async (req) => {
 
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     const n = Math.max(1, Math.min(4, count));
-    const aspectHint = aspectRatio === "1:1" ? "square 1:1" : aspectRatio === "9:16" ? "vertical 9:16" : "cinematic 16:9 widescreen";
+    const aspectHint = aspectRatio === "1:1" ? "square 1:1 portrait composition" : aspectRatio === "9:16" ? "vertical 9:16" : "cinematic 16:9 widescreen";
     const styled = `${prompt}. Ultra-detailed, professional, ${aspectHint}, premium quality, sharp focus, photorealistic.`;
 
     if (!apiKey) {

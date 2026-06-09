@@ -55,7 +55,7 @@ async function generateKeyframe(apiKey: string, prompt: string): Promise<string 
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-preview-05-20",
+        model: "google/gemini-2.5-flash-image",
         messages: [{ role: "user", content: prompt }],
         modalities: ["image", "text"],
       }),
