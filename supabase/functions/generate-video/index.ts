@@ -77,7 +77,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    const apiKey = Deno.env.get("LOVABLE_API_KEY");
     const aspectHint = aspectRatio === "9:16" ? "vertical 9:16 portrait" : aspectRatio === "1:1" ? "square 1:1" : "cinematic 16:9 widescreen";
 
     const beats = [
@@ -90,20 +89,18 @@ Deno.serve(async (req) => {
       async start(ctrl) {
         try {
           ctrl.enqueue(sse("stage", { step: 0, total: 5, label: "Analyzing prompt…" }));
-          await new Promise(r => setTimeout(r, 300));
+          await new Promise(r => setTimeout(r, 200));
           ctrl.enqueue(sse("stage", { step: 1, total: 5, label: "Storyboarding shots…" }));
-          await new Promise(r => setTimeout(r, 300));
+          await new Promise(r => setTimeout(r, 200));
 
           const frames: string[] = [];
           for (let i = 0; i < beats.length; i++) {
             ctrl.enqueue(sse("stage", { step: 2 + i, total: 5, label: `Rendering keyframe ${i+1}/3…` }));
-            let url: string | null = null;
-            if (apiKey) {
-              url = await generateKeyframe(apiKey, beats[i]);
-            }
+            let url = await generateKeyframe(beats[i], i, aspectRatio);
+            const isFallback = !url;
             if (!url) url = fallbackFrame(prompt, i, aspectRatio);
             frames.push(url);
-            ctrl.enqueue(sse("frame", { index: i, url, fallback: !apiKey }));
+            ctrl.enqueue(sse("frame", { index: i, url, fallback: isFallback }));
           }
 
           ctrl.enqueue(sse("done", { frames }));
