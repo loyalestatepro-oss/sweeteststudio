@@ -94,15 +94,15 @@ Deno.serve(async (req) => {
       });
     }
 
-    // StreamElements caps text length; keep it reasonable.
-    const text = String(prompt).slice(0, 500);
+    // Google Translate TTS handles up to ~5k characters via chunking.
+    const text = String(prompt).slice(0, 2000);
     const pool = VOICE_MAP[preset] || VOICE_MAP.Narration;
     const n = Math.max(1, Math.min(4, Number(count)));
     const wordCount = text.trim().split(/\s+/).length;
     const estSecs = Math.max(2, Math.round(wordCount / 2.5));
     const durStr = `${Math.floor(estSecs / 60)}:${(estSecs % 60).toString().padStart(2, "0")}`;
 
-    const tasks = Array.from({ length: n }, (_, i) => synth(pool[i % pool.length].voice, text));
+    const tasks = Array.from({ length: n }, (_, i) => synth(pool[i % pool.length].tld, pool[i % pool.length].lang, text));
     const results = await Promise.all(tasks);
 
     const clips = results.map((audioUrl, i) => ({
@@ -110,8 +110,7 @@ Deno.serve(async (req) => {
       audioUrl,
       duration: durStr,
       preset,
-      lang: pool[i % pool.length].lang,
-      voice: pool[i % pool.length].voice,
+      lang: pool[i % pool.length].label,
       fallback: !audioUrl,
     }));
     const fallback = results.every((r) => !r);
