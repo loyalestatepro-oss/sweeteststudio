@@ -49,7 +49,47 @@ function fallbackFrame(prompt: string, idx: number, aspect: string): string {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
-async function generateKeyframe(prompt: string, idx: number, aspect: string): Promise<string | null> {
+const CF_ACCOUNT_ID = Deno.env.get("CLOUDFLARE_ACCOUNT_ID");
+const CF_API_TOKEN = Deno.env.get("CLOUDFLARE_API_TOKEN");
+
+function bufToB64(buf: Uint8Array): string {
+  let bin = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < buf.length; i += chunk) {
+    bin += String.fromCharCode.apply(null, Array.from(buf.subarray(i, i + chunk)) as number[]);
+  }
+  return btoa(bin);
+}
+
+async function cfFlux(prompt: string, idx: number, aspect: string): Promise<string | null> {
+  if (!CF_ACCOUNT_ID || !CF_API_TOKEN) return null;
+  try {
+    const sq = aspect === "1:1";
+    const vert = aspect === "9:16";
+    const width = sq ? 1024 : vert ? 768 : 1280;
+    const height = sq ? 1024 : vert ? 1280 : 720;
+    const seed = Math.abs(hashStr(prompt) + idx * 7919) % 1000000;
+    const url = `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/ai/run/@cf/black-forest-labs/flux-1-schnell`;
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${CF_API_TOKEN}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt, width, height, num_steps: 4, seed }),
+    });
+    if (!resp.ok) { console.error("cf flux keyframe", resp.status); return null; }
+    const ct = resp.headers.get("content-type") || "";
+    if (ct.includes("application/json")) {
+      const j = await resp.json();
+      const b64 = j?.result?.image;
+      if (typeof b64 === "string" && b64.length > 500) return `data:image/jpeg;base64,${b64}`;
+      return null;
+    }
+    const buf = new Uint8Array(await resp.arrayBuffer());
+    if (buf.length < 1000) return null;
+    return `data:image/png;base64,${bufToB64(buf)}`;
+  } catch (e) { console.error("cf flux keyframe err", e); return null; }
+}
+
+async function pollinations(prompt: string, idx: number, aspect: string): Promise<string | null> {
   try {
     const vert = aspect === "9:16";
     const sq = aspect === "1:1";
@@ -58,12 +98,15 @@ async function generateKeyframe(prompt: string, idx: number, aspect: string): Pr
     const seed = Math.abs(hashStr(prompt) + idx * 7919) % 1000000;
     const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true&enhance=true&referrer=lovable.app`;
     const resp = await fetch(url);
-    if (!resp.ok) { console.error("keyframe pollinations", resp.status); return null; }
+    if (!resp.ok) return null;
     const buf = new Uint8Array(await resp.arrayBuffer());
     if (buf.length < 1000) return null;
-    let bin = ""; for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
-    return `data:image/jpeg;base64,${btoa(bin)}`;
-  } catch (e) { console.error("keyframe exception", e); return null; }
+    return `data:image/jpeg;base64,${bufToB64(buf)}`;
+  } catch { return null; }
+}
+
+async function generateKeyframe(prompt: string, idx: number, aspect: string): Promise<string | null> {
+  return (await cfFlux(prompt, idx, aspect)) ?? (await pollinations(prompt, idx, aspect));
 }
 
 Deno.serve(async (req) => {

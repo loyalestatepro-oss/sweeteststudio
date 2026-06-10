@@ -1,10 +1,13 @@
 // Edge function: generate-image
-// Primary: Pollinations.ai (free, no key). Fallback: Lovable AI Gateway. Final: SVG.
+// Primary: Cloudflare Workers AI (FLUX.1 [schnell]). Fallback: Pollinations. Final: SVG.
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
+
+const CF_ACCOUNT_ID = Deno.env.get("CLOUDFLARE_ACCOUNT_ID");
+const CF_API_TOKEN = Deno.env.get("CLOUDFLARE_API_TOKEN");
 
 function hashStr(s: string): number {
   return s.split("").reduce((a, c) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0);
@@ -27,6 +30,50 @@ function premiumSVG(prompt: string, idx: number, aspect: string): string {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
+function bufToDataUrl(buf: Uint8Array, mime: string): string {
+  let bin = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < buf.length; i += chunk) {
+    bin += String.fromCharCode.apply(null, Array.from(buf.subarray(i, i + chunk)) as number[]);
+  }
+  return `data:${mime};base64,${btoa(bin)}`;
+}
+
+async function fetchCloudflareFlux(prompt: string, idx: number, aspect: string): Promise<string | null> {
+  if (!CF_ACCOUNT_ID || !CF_API_TOKEN) return null;
+  try {
+    const sq = aspect === "1:1";
+    const vert = aspect === "9:16";
+    const width = sq ? 1024 : vert ? 768 : 1280;
+    const height = sq ? 1024 : vert ? 1280 : 720;
+    const seed = Math.abs(hashStr(prompt) + idx * 7919) % 1000000;
+    const url = `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/ai/run/@cf/black-forest-labs/flux-1-schnell`;
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${CF_API_TOKEN}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt, width, height, num_steps: 4, seed }),
+    });
+    if (!resp.ok) {
+      console.error("cloudflare flux", resp.status, await resp.text().catch(() => ""));
+      return null;
+    }
+    const ct = resp.headers.get("content-type") || "";
+    if (ct.includes("application/json")) {
+      const j = await resp.json();
+      const b64 = j?.result?.image;
+      if (typeof b64 === "string" && b64.length > 500) return `data:image/jpeg;base64,${b64}`;
+      console.error("cloudflare flux unexpected json", JSON.stringify(j).slice(0, 200));
+      return null;
+    }
+    const buf = new Uint8Array(await resp.arrayBuffer());
+    if (buf.length < 1000) return null;
+    return bufToDataUrl(buf, "image/png");
+  } catch (e) {
+    console.error("cloudflare flux err", e);
+    return null;
+  }
+}
+
 async function fetchPollinations(prompt: string, idx: number, aspect: string): Promise<string | null> {
   try {
     const sq = aspect === "1:1";
@@ -37,12 +84,15 @@ async function fetchPollinations(prompt: string, idx: number, aspect: string): P
     const enc = encodeURIComponent(prompt);
     const url = `https://image.pollinations.ai/prompt/${enc}?width=${w}&height=${h}&seed=${seed}&nologo=true&enhance=true&referrer=lovable.app`;
     const resp = await fetch(url);
-    if (!resp.ok) { console.error("pollinations", resp.status); return null; }
+    if (!resp.ok) return null;
     const buf = new Uint8Array(await resp.arrayBuffer());
     if (buf.length < 1000) return null;
-    let bin = ""; for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
-    return `data:image/jpeg;base64,${btoa(bin)}`;
-  } catch (e) { console.error("pollinations err", e); return null; }
+    return bufToDataUrl(buf, "image/jpeg");
+  } catch { return null; }
+}
+
+async function generateOne(prompt: string, idx: number, aspect: string): Promise<string | null> {
+  return (await fetchCloudflareFlux(prompt, idx, aspect)) ?? (await fetchPollinations(prompt, idx, aspect));
 }
 
 Deno.serve(async (req) => {
@@ -59,12 +109,13 @@ Deno.serve(async (req) => {
     }
 
     const variations = [prompt, `${prompt}, cinematic lighting, ultra detailed`, `${prompt}, different angle, vibrant colors`, `${prompt}, artistic composition, dramatic`];
-    const tasks = Array.from({ length: count }, (_, i) => fetchPollinations(variations[i] || prompt, i, aspectRatio));
+    const tasks = Array.from({ length: count }, (_, i) => generateOne(variations[i] || prompt, i, aspectRatio));
     const results = await Promise.all(tasks);
     const images = results.map((u, i) => u ?? premiumSVG(prompt, i, aspectRatio));
     const allFallback = results.every((u) => !u);
+    const provider = CF_ACCOUNT_ID && CF_API_TOKEN ? "cloudflare-flux-schnell" : "pollinations";
 
-    return new Response(JSON.stringify({ images, fallback: allFallback }), {
+    return new Response(JSON.stringify({ images, fallback: allFallback, provider }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
